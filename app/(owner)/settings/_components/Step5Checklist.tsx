@@ -11,7 +11,10 @@ export default function Step5Checklist({ initial, slug }: {
   initial: { name: string; hint: string }[]; slug: string;
 }) {
   const [state, formAction, pending] = useActionState(saveChecklist, WIZARD_IDLE);
-  const [rows, setRows] = useState(initial.length > 0 ? initial : [{ name: "", hint: "" }]);
+  const [rows, setRows] = useState(() => {
+    const seed = initial.length > 0 ? initial : [{ name: "", hint: "" }];
+    return seed.map((row, idx) => ({ id: idx, ...row }));
+  });
 
   return (
     <form action={formAction}>
@@ -22,13 +25,13 @@ export default function Step5Checklist({ initial, slug }: {
       </p>
       <div className="mb-4 flex flex-col gap-2">
         {rows.map((row, i) => (
-          <div key={i} className="flex items-center gap-2.5 rounded-[9px] border border-owner-border bg-owner-panel px-3.5 py-2">
+          <div key={row.id} className="flex items-center gap-2.5 rounded-[9px] border border-owner-border bg-owner-panel px-3.5 py-2">
             <div className="w-[18px] font-mono text-[10px] text-[#5e6070]">{String(i + 1).padStart(2, "0")}</div>
             <input name="itemName" defaultValue={row.name} placeholder="Area name" aria-label={`Area ${i + 1} name`} className={`${inputCls} flex-1 border-0 bg-transparent px-0`} />
             <input name="itemHint" defaultValue={row.hint} placeholder="Hint (optional)" aria-label={`Area ${i + 1} hint`} className={`${inputCls} flex-1 border-0 bg-transparent px-0 text-owner-muted`} />
             <button
               type="button" aria-label={`Remove area ${i + 1}`}
-              onClick={() => setRows((r) => r.filter((_, j) => j !== i))}
+              onClick={() => setRows((r) => r.filter((row2) => row2.id !== row.id))}
               className="text-[11px] text-[#5e6070] hover:text-danger"
             >
               Remove
@@ -36,7 +39,13 @@ export default function Step5Checklist({ initial, slug }: {
           </div>
         ))}
         <button
-          type="button" onClick={() => setRows((r) => [...r, { name: "", hint: "" }])}
+          type="button"
+          onClick={() =>
+            setRows((r) => [
+              ...r,
+              { id: (r.length ? Math.max(...r.map((row) => row.id)) : -1) + 1, name: "", hint: "" },
+            ])
+          }
           className="self-start p-0.5 text-xs font-semibold text-owner-accent"
         >
           + Add an area
