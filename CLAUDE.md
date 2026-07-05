@@ -4,6 +4,12 @@ VenueDash is a SaaS platform for Atlanta studio owners who rent their spaces for
 
 ## What's in this repo
 
+### `docs/`
+Implementation source of truth — read these before writing any application code:
+
+- **`ARCHITECTURE.md`** — Locked MVP architecture decisions: system shape, identity model, the booking state machine, full data model, photo chain-of-custody rules, payments, and V1 scope boundaries.
+- **`IMPLEMENTATION_PLAN.md`** — The 11-phase (0–10) build plan, each phase with steps and exit criteria, plus cross-cutting rules and a spec traceability table.
+
 ### `prototype/`
 Two files that constitute the full interactive UI prototype built with the dc-runtime Design Component system:
 
