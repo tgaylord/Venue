@@ -21,16 +21,3 @@ No build step. File loads React from unpkg and runs entirely in the browser. The
 ## Project status
 
 Prototype complete. Full implementation spec coming next.
-
-## Development setup (VenueDash app)
-
-1. `nvm use` (Node 20) and `npm install`.
-2. Copy `.env.example` → `.env.local` and fill in values:
-   - **Clerk** — create a free app at dashboard.clerk.com, copy the test keys.
-   - **Neon** — create a free Postgres at neon.tech, copy the pooled `DATABASE_URL`.
-   - **R2** — create a Cloudflare R2 bucket + API token (`R2_*`).
-   - **Resend** — create an API key at resend.com; verify a sending domain's DNS.
-3. `npm run db:migrate` to apply migrations.
-4. `npm run dev` and open http://localhost:3000.
-
-Scripts: `npm run dev | build | lint | typecheck | test | db:generate | db:migrate | db:healthcheck`.
