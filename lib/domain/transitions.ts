@@ -30,7 +30,10 @@ export class ConcurrentTransitionError extends Error {
   }
 }
 
-type TransitionHook = (booking: Booking, actor: Actor) => Promise<void>;
+type TransitionHook = (
+  booking: Booking,
+  ctx: { from: BookingState; actor: Actor; meta?: Record<string, unknown> }
+) => Promise<void>;
 const hooks = new Map<BookingState, TransitionHook[]>();
 
 /** Later phases register side effects (emails, availability blocks) per target state. */
@@ -56,7 +59,7 @@ export async function transitionBooking(
   actor: Actor,
   opts?: { meta?: Record<string, unknown>; expectedFrom?: BookingState }
 ): Promise<Booking> {
-  const updated = await db.transaction(async (tx) => {
+  const { row: updated, from } = await db.transaction(async (tx) => {
     let from = opts?.expectedFrom;
     if (!from) {
       const [current] = await tx.select().from(bookings).where(eq(bookings.id, bookingId));
@@ -87,12 +90,12 @@ export async function transitionBooking(
       metadata: opts?.meta ?? null,
     });
 
-    return rows[0];
+    return { row: rows[0], from };
   });
 
   for (const hook of hooks.get(to) ?? []) {
     try {
-      await hook(updated, actor);
+      await hook(updated, { from, actor, meta: opts?.meta });
     } catch (e) {
       console.error(`transition hook for "${to}" failed (transition stands):`, e);
     }

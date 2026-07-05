@@ -80,14 +80,26 @@ describe("transitionBooking behavior", () => {
     expect(events).toHaveLength(0);
   });
 
+  it("throws BookingNotFoundError when expectedFrom is supplied but the id does not exist", async () => {
+    await expect(
+      transitionBooking(
+        db,
+        "00000000-0000-0000-0000-000000000000",
+        "declined",
+        { type: "owner" },
+        { expectedFrom: "pending" }
+      )
+    ).rejects.toThrow(BookingNotFoundError);
+  });
+
   it("runs registered hooks after commit and survives hook failure", async () => {
     const calls: string[] = [];
-    registerTransitionHook("declined", async (b) => { calls.push(`declined:${b.id}`); });
     registerTransitionHook("declined", async () => { throw new Error("hook boom"); });
+    registerTransitionHook("declined", async (b) => { calls.push(`declined:${b.id}`); });
     const id = await makeBooking("pending");
     const updated = await transitionBooking(db, id, "declined", { type: "owner" });
     expect(updated.state).toBe("declined");           // hook failure never breaks the transition
-    expect(calls).toEqual([`declined:${id}`]);
+    expect(calls).toEqual([`declined:${id}`]);         // recorder still ran despite the earlier hook failing
   });
 
   it("does not run hooks when the transition is illegal", async () => {
