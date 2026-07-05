@@ -63,11 +63,12 @@ Exported as a `BOOKING_STATES` const array, a `BookingState` type, and a `LEGAL_
 ## 5. Transition module (`lib/domain/transitions.ts`)
 
 ```ts
-transitionBooking(db, bookingId, to, actor: { type: "owner"|"renter"|"system"; id?: string }, meta?): Promise<Booking>
+transitionBooking(db, bookingId, to, actor: { type: "owner"|"renter"|"system"; id?: string },
+                  opts?: { meta?: Record<string, unknown>; expectedFrom?: BookingState }): Promise<Booking>
 ```
 
 In one `db.transaction()`:
-1. Read the booking's current state (`from`). Missing → `BookingNotFoundError`.
+1. Read the booking's current state (`from`) — or use `opts.expectedFrom` when the caller already knows it (the future clock-cron's case; also makes the CAS branch deterministically testable). Missing booking → `BookingNotFoundError`.
 2. `to ∉ LEGAL_TRANSITIONS[from]` → `IllegalTransitionError` (carries from/to).
 3. Compare-and-swap: `UPDATE bookings SET state = to WHERE id = ? AND state = from`. Zero rows → `ConcurrentTransitionError` (another transition won the race).
 4. Append the `booking_events` row (from, to, actor_type, actor_id, metadata).
