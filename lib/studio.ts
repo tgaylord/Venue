@@ -1,4 +1,4 @@
-import { asc, eq, like } from "drizzle-orm";
+import { and, asc, eq, isNull, like } from "drizzle-orm";
 import { studios, spaces, checklistItems } from "@/db/schema";
 import type { Db } from "@/lib/domain/transitions";
 
@@ -74,4 +74,59 @@ export async function createStudio(
     );
     return studio;
   });
+}
+
+/** Step 1 re-save: update profile fields + replace spaces. Slug never changes. */
+export async function updateProfile(
+  db: Db,
+  studioId: string,
+  input: { name: string; address: string | null; equipmentList: string | null; spaces: SpaceInput[] }
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.update(studios)
+      .set({ name: input.name, address: input.address, equipmentList: input.equipmentList })
+      .where(eq(studios.id, studioId));
+    await tx.delete(spaces).where(eq(spaces.studioId, studioId));
+    if (input.spaces.length > 0) {
+      await tx.insert(spaces).values(input.spaces.map((s) => ({ ...s, studioId })));
+    }
+  });
+}
+
+export async function updateHouseRules(
+  db: Db,
+  studioId: string,
+  input: { alcoholPolicy: string; vendorPolicy: string; noiseCurfew: string | null; cleanupWindowMin: number | null }
+): Promise<void> {
+  await db.update(studios).set(input).where(eq(studios.id, studioId));
+}
+
+export async function updatePricing(
+  db: Db,
+  studioId: string,
+  input: { hourlyRateCents: number; minHours: number; depositCents: number }
+): Promise<void> {
+  await db.update(studios).set(input).where(eq(studios.id, studioId));
+}
+
+export async function replaceChecklistItems(
+  db: Db,
+  studioId: string,
+  items: { name: string; hint: string | null }[]
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(checklistItems).where(eq(checklistItems.studioId, studioId));
+    if (items.length > 0) {
+      await tx.insert(checklistItems).values(
+        items.map((it, i) => ({ studioId, position: i + 1, name: it.name, hint: it.hint }))
+      );
+    }
+  });
+}
+
+/** First step-5 save stamps completion; later saves never move it. */
+export async function completeOnboarding(db: Db, studioId: string): Promise<void> {
+  await db.update(studios)
+    .set({ onboardingCompletedAt: new Date() })
+    .where(and(eq(studios.id, studioId), isNull(studios.onboardingCompletedAt)));
 }
