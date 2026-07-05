@@ -1,4 +1,4 @@
-import WaitlistForm from "./WaitlistForm";
+import Link from "next/link";
 
 export default function Hero() {
   return (
@@ -13,7 +13,20 @@ export default function Hero() {
         Signed contracts and timestamped condition photos — the paperwork side of event
         rentals, handled in one place.
       </p>
-      <WaitlistForm id="waitlist" />
+      <div className="flex items-center gap-3">
+        <Link
+          href="/sign-up"
+          className="rounded-[9px] bg-owner-accent px-[22px] py-[13px] text-sm font-bold text-[#0d0e14]"
+        >
+          Get started free
+        </Link>
+        <a
+          href="#waitlist"
+          className="rounded-[9px] border border-[#2c2d35] px-[22px] py-[13px] text-sm font-semibold text-owner-muted"
+        >
+          Join the waitlist
+        </a>
+      </div>
       <div className="mt-[14px] font-mono text-[10.5px] tracking-[.04em] text-[#5e6070]">
         Atlanta-owned · HBCU-founded · First 60 days free
       </div>

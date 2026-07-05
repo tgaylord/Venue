@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Header() {
   return (
     <header className="flex items-center justify-between py-[22px]">
@@ -7,12 +9,12 @@ export default function Header() {
         </div>
         <span className="text-base font-bold tracking-tight">VenueDash</span>
       </div>
-      <a
-        href="#waitlist"
+      <Link
+        href="/sign-up"
         className="rounded-lg bg-owner-text px-4 py-[9px] text-[12.5px] font-semibold text-owner-bg"
       >
-        Join the waitlist
-      </a>
+        Get started free
+      </Link>
     </header>
   );
 }
