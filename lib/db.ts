@@ -1,9 +1,9 @@
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import * as schema from "@/db/schema";
 
 let _sql: ReturnType<typeof neon<false, false>> | null = null;
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: NeonHttpDatabase<typeof schema> | null = null;
 
 function init() {
   if (!_db) {
