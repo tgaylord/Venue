@@ -25,7 +25,7 @@ A four-lens pressure-test (technical soundness, sequencing, legal/compliance, so
 | Capability | Notes |
 |---|---|
 | **Onboarding wizard** | Studio profile, spaces (+ occupancy caps), house rules, pricing, **deposit amount as a contract term (a number that prints — not a charge)**, photo-checklist config. Produces a live `/book/[slug]`. Revisitable as Settings. |
-| **Landing + disclaimer/ToS** | Iterated from the existing HTML mock into the `(marketing)` route group. Standalone; built **early** so founder outreach can begin during the build. Legal disclaimers + ToS/privacy placed here. |
+| **Landing + disclaimer/ToS** | Iterated from the existing HTML mock into the `(marketing)` route group. Standalone; built **early** so founder outreach can begin during the build. CTA is a **mailing-list signup** until the wizard exists, then re-points to it. Legal disclaimers + ToS/privacy placed here. |
 | **Public booking page + intake** | Renter, **no account**. Mobile-first, warm-light theme. Creates a `pending` request, snapshots terms, emails owner + tokenized status link to renter. |
 | **Owner dashboard + booking detail** | State-derived sections. Two **manual toggles**: *deposit collected / returned* and *contract signed*. |
 | **Contract generation** | Standard GA template as a typed template function → rendered PDF with "in plain English" summaries + disclaimer. **Signing is manual** in v0.5 (owner marks signed); no e-sign integration. |
@@ -36,7 +36,7 @@ A four-lens pressure-test (technical soundness, sequencing, legal/compliance, so
 **VenueDash never touches deposit money in v0.5.** The contract states the deposit amount; the owner collects and refunds it themselves (their own Stripe, Zelle, cash, etc.). VenueDash records only a status: `deposit_status ∈ {uncollected, collected, returned}` with a timestamp, owner-toggled. This is what removes the money-transmission / escrow-ToS exposure entirely.
 
 ### Contract signing
-VenueDash generates the correct GA contract **PDF**; signing happens via a manual/free e-sign tool or typed acknowledgment; the owner marks the booking signed (`contract_signed_at`). This removes the DocuSign integration (a ~3-week build) and the sandbox-validity problem from the critical path. Automated e-sign returns in v1.0.
+VenueDash generates the correct GA contract **PDF**; signing runs through a **free third-party e-sign tool** and the owner marks the booking signed (`contract_signed_at`). This removes the DocuSign integration (a ~3-week build) and the sandbox-validity problem from the critical path. Automated e-sign returns in v1.0.
 
 ### Camera / chain of custody
 Live in-app capture stays **primary**; a mobile `capture` file-input is a **fallback** when `getUserMedia` is blocked (email-opened webviews, older iOS). Either path still yields a fresh photo + server timestamp + geotag + hash. Copy says **"timestamped documentation,"** never "immutable evidence" — the hash provides genuine tamper-evidence without over-promising a courtroom standard. The `deposit_protected` flag and the skip-warning are retained; without escrow the flag now means "no defensible record exists," not "no frozen refund."
@@ -112,13 +112,13 @@ Also form an **LLC** and consider **tech E&O / general-liability insurance** bef
 
 From the pressure-test, to keep on the radar even in v0.5:
 
-- **Camera in webviews:** reminders/links opened inside Gmail/iOS Mail in-app browsers may block `getUserMedia`; gate with an "open in the installed app / Safari" interstitial, and rely on the capture-file fallback otherwise. **Decide explicitly who performs the walkthrough (owner vs. renter)** — it changes the reliability profile. *(Assumed: the owner. Confirm during Phase 7.)*
+- **Camera in webviews:** reminders/links opened inside Gmail/iOS Mail in-app browsers may block `getUserMedia`; gate with an "open in the installed app / Safari" interstitial, and rely on the capture-file fallback otherwise. The walkthrough is performed by the **owner** (decided — §9), so an installed owner PWA is the reliability target.
 - **Vercel free-tier cron** can't run sub-daily; the 3h-before reminder should use an external free scheduler (GitHub Actions / cron-job.org) hitting a protected route, or be accepted as best-effort at MVP volume.
 - **R2 direct upload:** use presigned direct-to-R2 PUT (Vercel serverless caps request bodies at 4.5MB, below a modern phone JPEG); configure bucket CORS; compress client-side.
 - **Resend deliverability:** verify the sending domain's DNS early — booking/contract links are business-critical transactional email.
 
-## 9. Open items for the implementation plan
+## 9. Resolved decisions
 
-- Confirm walkthrough performer (owner assumed).
-- Landing CTA target for the interim (waitlist form vs. mailto vs. early wizard link).
-- Exact interim manual-signing mechanism (free e-sign tool vs. typed acknowledgment page).
+- **Walkthrough performer: the studio owner.** The chain-of-custody flow targets an installed owner PWA (more reliable `getUserMedia` than an email-linked renter webview).
+- **Interim landing CTA: mailing-list signup.** The `(marketing)` CTA collects emails (a waitlist) until the onboarding wizard exists, then re-points to the wizard.
+- **Interim signing: a free e-sign tool.** VenueDash generates the contract PDF; signing runs through a free third-party e-sign tool first (owner marks the booking signed). Automated in-app e-sign returns in v1.0.
