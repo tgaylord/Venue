@@ -12,9 +12,13 @@
     "lint": "eslint",
     "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
     "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
-    "db:healthcheck": "dotenv -e .env.local -- tsx scripts/db-healthcheck.ts"
+    "db:healthcheck": "dotenv -e .env.local -- tsx scripts/db-healthcheck.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1079.0",
+    "@aws-sdk/s3-request-presigner": "^3.1079.0",
     "@clerk/nextjs": "^7.5.12",
     "@neondatabase/serverless": "^1.1.0",
     "drizzle-orm": "^0.45.2",
@@ -33,6 +37,7 @@
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
     "tsx": "^4.23.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.9"
   }
 }
