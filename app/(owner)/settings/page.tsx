@@ -4,6 +4,10 @@ import { getDb } from "@/lib/db";
 import { getStudioByClerkUserId, getSpacesForStudio, getChecklistForStudio } from "@/lib/studio";
 import WizardDots from "./_components/WizardDots";
 import Step1Profile from "./_components/Step1Profile";
+import Step2Rules from "./_components/Step2Rules";
+import Step3Pricing from "./_components/Step3Pricing";
+import Step4Contract from "./_components/Step4Contract";
+import Step5Checklist from "./_components/Step5Checklist";
 
 export default async function SettingsPage({ searchParams }: {
   searchParams: Promise<{ step?: string }>;
@@ -21,7 +25,6 @@ export default async function SettingsPage({ searchParams }: {
 
   const spaces = studio ? await getSpacesForStudio(db, studio.id) : [];
   const checklist = studio ? await getChecklistForStudio(db, studio.id) : [];
-  void checklist; // consumed by Step5 in the next task
 
   return (
     <main className="mx-auto max-w-[620px] px-4 pb-16 pt-8">
@@ -39,8 +42,31 @@ export default async function SettingsPage({ searchParams }: {
           }}
         />
       )}
-      {step > 1 && (
-        <p className="text-sm text-owner-muted">Step {step} arrives in the next task.</p>
+      {step === 2 && studio && (
+        <Step2Rules
+          initial={{
+            alcoholPolicy: studio.alcoholPolicy ?? "byob_with_acknowledgment",
+            vendorPolicy: studio.vendorPolicy ?? "pre_approval",
+            noiseCurfew: studio.noiseCurfew ?? "",
+            cleanupWindowMin: studio.cleanupWindowMin?.toString() ?? "",
+          }}
+        />
+      )}
+      {step === 3 && studio && (
+        <Step3Pricing
+          initial={{
+            hourlyRate: studio.hourlyRateCents ? (studio.hourlyRateCents / 100).toString() : "",
+            minHours: studio.minHours?.toString() ?? "",
+            deposit: studio.depositCents ? (studio.depositCents / 100).toString() : "",
+          }}
+        />
+      )}
+      {step === 4 && studio && <Step4Contract studio={studio} spaces={spaces} />}
+      {step === 5 && studio && (
+        <Step5Checklist
+          initial={checklist.map((c) => ({ name: c.name, hint: c.hint ?? "" }))}
+          slug={studio.slug}
+        />
       )}
     </main>
   );
