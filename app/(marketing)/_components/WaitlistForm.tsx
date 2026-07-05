@@ -10,7 +10,7 @@ export default function WaitlistForm({ id }: { id?: string }) {
 
   if (state.status === "success") {
     return (
-      <p id={id} className="rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
+      <p id={id} role="status" className="rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
         {state.message}
       </p>
     );
@@ -22,9 +22,9 @@ export default function WaitlistForm({ id }: { id?: string }) {
         {/* Honeypot — hidden from real users, tempting to bots */}
         <input
           type="text"
-          name="company"
+          name="contact_preference_x"
           tabIndex={-1}
-          autoComplete="off"
+          autoComplete="one-time-code"
           aria-hidden="true"
           className="hidden"
         />

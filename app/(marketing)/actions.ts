@@ -15,8 +15,8 @@ export async function joinWaitlist(
   _prev: WaitlistFormState,
   formData: FormData
 ): Promise<WaitlistFormState> {
-  // Honeypot: real users never see or fill the "company" field.
-  if (String(formData.get("company") ?? "").length > 0) {
+  // Honeypot: real users never see or fill the "contact_preference_x" field.
+  if (String(formData.get("contact_preference_x") ?? "").length > 0) {
     return { status: "success", message: SUCCESS };
   }
 
