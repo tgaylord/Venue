@@ -1,6 +1,7 @@
-import { sql } from "@/lib/db";
+import { getSql } from "@/lib/db";
 
 async function main() {
+  const sql = getSql();
   const rows = await sql`SELECT 1 AS ok`;
   if (rows[0]?.ok !== 1) throw new Error("Healthcheck failed");
   console.log("DB healthcheck OK:", rows[0]);
