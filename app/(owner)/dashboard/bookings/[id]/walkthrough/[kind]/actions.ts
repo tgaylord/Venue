@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db";
-import { getStudioByClerkUserId } from "@/lib/studio";
+import { getStudioByClerkUserId, getChecklistForStudio } from "@/lib/studio";
 import { getBookingForOwner } from "@/lib/booking";
 import { getSignedUploadUrl } from "@/lib/storage";
 import {
@@ -22,7 +22,7 @@ async function ctx(bookingId: string) {
   if (!studio) redirect("/settings");
   const booking = await getBookingForOwner(db, bookingId, studio.id);
   if (!booking) notFound();
-  return { db, booking };
+  return { db, studio, booking };
 }
 
 export async function requestUpload(
@@ -59,13 +59,14 @@ export async function commitPhoto(
   }
 }
 
-export async function lockWalkthroughAction(bookingId: string, kind: string, requiredCount: number) {
+export async function lockWalkthroughAction(bookingId: string, kind: string) {
   const k = coerceKind(kind);
   if (!k) return { ok: false as const, error: "bad kind" };
-  const { db } = await ctx(bookingId);
+  const { db, studio } = await ctx(bookingId);
   const w = await getOrCreateWalkthrough(db, bookingId, k);
   try {
-    await lockWalkthrough(db, w.id, { requireItemCount: requiredCount });
+    const items = await getChecklistForStudio(db, studio.id);
+    await lockWalkthrough(db, w.id, { requireItemCount: items.length });
   } catch (e) {
     if (e instanceof IncompleteWalkthroughError) return { ok: false as const, error: "Capture every area before locking." };
     throw e;

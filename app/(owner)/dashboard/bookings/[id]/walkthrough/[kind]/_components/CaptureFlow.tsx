@@ -80,14 +80,20 @@ export default function CaptureFlow(props: Props) {
     // Synchronizing with the camera hardware (an external system) — startCamera's
     // getUserMedia failure path sets `useFallback`, which the linter's static
     // analysis can't distinguish from a "derive state during render" anti-pattern.
+    // Gated to the live-preview branch only (not `shot`) — once a photo is captured
+    // the `<video>` element unmounts in favor of the "Photo captured" overlay, so
+    // there is no live preview to drive. Including `shot` in the deps means Retake
+    // (shot: true -> false, same `idx`) re-runs this effect and re-acquires a fresh
+    // stream, attaching it to the freshly-mounted `<video>` node.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (phase === "capture" && !useFallback && !webview) { startCamera(); }
+    if (phase === "capture" && !shot && !useFallback && !webview) { startCamera(); }
     // Cleanup runs before every re-invocation of this effect (e.g. `idx` bumping on
-    // "Next area") AND on unmount — guaranteeing the prior stream's tracks are
-    // stopped before a new getUserMedia() call ever fires, and stopped for good
-    // when the component unmounts or leaves the capture phase.
+    // "Next area", or `shot` flipping true on capture / false on retake) AND on
+    // unmount — guaranteeing the prior stream's tracks are always stopped before a
+    // new getUserMedia() call ever fires, and stopped for good when the component
+    // unmounts or leaves the capture phase.
     return () => { stopCamera(); };
-  }, [phase, idx, useFallback, webview]);
+  }, [phase, idx, shot, useFallback, webview]);
 
   async function uploadBlob(item: Item, blob: Blob) {
     setBusy(true); setErr(null);
@@ -141,7 +147,7 @@ export default function CaptureFlow(props: Props) {
 
   async function lock() {
     setBusy(true); setErr(null);
-    const res = await lockWalkthroughAction(bookingId, kind, items.length);
+    const res = await lockWalkthroughAction(bookingId, kind);
     setBusy(false);
     if (!res.ok) { setErr(res.error ?? "Could not lock."); return; }
     stopCamera(); setPhase("locked");
