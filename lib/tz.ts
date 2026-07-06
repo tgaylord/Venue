@@ -15,8 +15,9 @@ function offsetMinutes(utc: Date): number {
 /** Interpret y-mo-d-h-min as America/New_York wall-clock; return the matching UTC Date. */
 function atlantaWallClockToUtc(y: number, mo: number, d: number, h: number, min: number): Date {
   const guess = Date.UTC(y, mo - 1, d, h, min); // pretend wall-clock is UTC
-  const off = offsetMinutes(new Date(guess)); // offset near that instant
-  return new Date(guess - off * 60000); // utc = wallclock - offset
+  const off1 = offsetMinutes(new Date(guess)); // offset near the guessed instant
+  const off2 = offsetMinutes(new Date(guess - off1 * 60000)); // offset at (near) the true instant
+  return new Date(guess - off2 * 60000); // utc = wallclock - offset
 }
 
 export function atlantaSlotToUtc(

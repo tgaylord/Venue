@@ -13,6 +13,13 @@ describe("atlantaSlotToUtc", () => {
     expect(startsAt.toISOString()).toBe("2026-01-10T23:00:00.000Z"); // 6 PM EST
     expect(endsAt.toISOString()).toBe("2026-01-11T02:00:00.000Z"); // 9 PM EST
   });
+
+  it("handles a DST fall-back transition landing inside the event's end", () => {
+    // 2026-10-31 9 PM EDT (-4), 8 hrs -> ends 2026-11-01 5 AM, after clocks fall back to EST (-5).
+    const { startsAt, endsAt } = atlantaSlotToUtc("2026-10-31", 21, 8);
+    expect(startsAt.toISOString()).toBe("2026-11-01T01:00:00.000Z"); // 9 PM EDT
+    expect(endsAt.toISOString()).toBe("2026-11-01T10:00:00.000Z"); // 5 AM EST
+  });
 });
 
 describe("formatAtlantaRange", () => {
