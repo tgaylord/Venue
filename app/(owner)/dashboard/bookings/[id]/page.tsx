@@ -5,13 +5,15 @@ import { getDb } from "@/lib/db";
 import { getStudioByClerkUserId } from "@/lib/studio";
 import { getBookingForOwner, getBookingEvents } from "@/lib/booking";
 import { getContractForBooking } from "@/lib/contract";
-import { toBookingView } from "@/lib/domain/booking-view";
+import { toBookingView, walkthroughEntries } from "@/lib/domain/booking-view";
+import { getWalkthroughSummary, getWalkthroughWithPhotos } from "@/lib/walkthrough";
 import { formatAtlantaRange } from "@/lib/tz";
 import { formatCents } from "@/lib/money";
 import StateChip from "../../../_components/StateChip";
 import LifecycleRail from "./_components/LifecycleRail";
 import ActionButtons from "./_components/ActionButtons";
 import DepositControl from "./_components/DepositControl";
+import WalkthroughRecord from "./_components/WalkthroughRecord";
 import { DEPOSIT_LABELS } from "./forms";
 
 export default async function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -28,6 +30,10 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const contract = await getContractForBooking(db, id);
   const view = toBookingView(booking, new Date());
   const snap = (booking.rateSnapshot ?? {}) as Record<string, unknown>;
+  const wtSummary = await getWalkthroughSummary(db, id);
+  const entries = walkthroughEntries(view.effectiveState, wtSummary);
+  const preRecord = wtSummary.preLocked ? await getWalkthroughWithPhotos(db, id, "pre") : null;
+  const postRecord = wtSummary.postLocked ? await getWalkthroughWithPhotos(db, id, "post") : null;
 
   return (
     <main className="mx-auto max-w-4xl">
@@ -102,17 +108,52 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             </div>
           ) : null}
 
-          {view.effectiveState === "event_day" ? (
+          {view.effectiveState === "event_day" && !entries.includes("start_pre_walkthrough") ? (
             <div className="rounded-xl border border-[#4a3a1a] bg-[#1b1710] p-4">
               <div className="font-mono text-[10px] uppercase tracking-wider text-warning">Event today</div>
-              <p className="mt-2 text-sm text-owner-text">The walkthrough checklist arrives in a later release.</p>
+              <p className="mt-2 text-sm text-owner-text">Pre-event documentation locked.</p>
             </div>
           ) : null}
 
-          {view.effectiveState === "post_event" ? (
+          {view.effectiveState === "post_event" && !entries.includes("start_post_walkthrough") ? (
             <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
               <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Event finished</div>
-              <p className="mt-2 text-sm text-owner-text">If everything checked out, return the renter&rsquo;s deposit and update its status below.</p>
+              <p className="mt-2 text-sm text-owner-text">
+                Post-event documentation locked. If everything checked out, return the renter&rsquo;s deposit and
+                update its status below.
+              </p>
+            </div>
+          ) : null}
+
+          {entries.includes("start_pre_walkthrough") ? (
+            <div className="rounded-xl border border-[#4a3a1a] bg-[#1b1710] p-4">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-warning">Pre-event walkthrough</div>
+              <p className="mt-2 text-sm text-owner-text">
+                Photograph every area before {booking.renterName} arrives — each photo is server-timestamped and
+                locked into a timestamped record.
+              </p>
+              <Link
+                href={`/dashboard/bookings/${booking.id}/walkthrough/pre`}
+                className="mt-4 inline-block rounded-lg bg-owner-accent px-4 py-2 text-sm font-bold text-[#0d0e14]"
+              >
+                Start pre-event walkthrough
+              </Link>
+            </div>
+          ) : null}
+
+          {entries.includes("start_post_walkthrough") ? (
+            <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Post-event walkthrough</div>
+              <p className="mt-2 text-sm text-owner-text">
+                Photograph the space after the event — each photo is server-timestamped and locked into a
+                timestamped record.
+              </p>
+              <Link
+                href={`/dashboard/bookings/${booking.id}/walkthrough/post`}
+                className="mt-4 inline-block rounded-lg bg-owner-accent px-4 py-2 text-sm font-bold text-[#0d0e14]"
+              >
+                Start post-event walkthrough
+              </Link>
             </div>
           ) : null}
 
@@ -179,8 +220,16 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
               )}
             </div>
             <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
-              <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Documentation</div>
-              <p className="mt-2 text-sm text-owner-muted">Pre/post walkthrough — timestamped documentation, in a later release.</p>
+              <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Condition documentation</div>
+              {!booking.depositProtected ? (
+                <p className="mt-2 text-xs text-warning">
+                  Walkthrough skipped — no defensible timestamped record exists for this event.
+                </p>
+              ) : null}
+              <div className="mt-2 space-y-3 text-sm">
+                <WalkthroughRecord label="Pre-event" bookingId={booking.id} kind="pre" record={preRecord} />
+                <WalkthroughRecord label="Post-event" bookingId={booking.id} kind="post" record={postRecord} />
+              </div>
             </div>
           </div>
         </div>

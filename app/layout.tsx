@@ -10,6 +10,14 @@ const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], 
 export const metadata: Metadata = {
   title: "VenueDash",
   description: "Paperwork infrastructure for studio owners who rent for private events.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "VenueDash",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -4,6 +4,7 @@ import TestEmail from "@/emails/TestEmail";
 import OwnerBookingRequest, { type OwnerBookingEmailProps } from "@/emails/OwnerBookingRequest";
 import RenterRequestReceived, { type RenterReceivedEmailProps } from "@/emails/RenterRequestReceived";
 import ContractReadyRenter, { type ContractReadyEmailProps } from "@/emails/ContractReadyRenter";
+import WalkthroughReminder, { type WalkthroughReminderEmailProps } from "@/emails/WalkthroughReminder";
 
 export async function renderTestEmail(props: { name: string }): Promise<string> {
   return render(TestEmail(props));
@@ -12,6 +13,7 @@ export async function renderTestEmail(props: { name: string }): Promise<string> 
 export type OwnerBookingEmail = OwnerBookingEmailProps;
 export type RenterReceivedEmail = RenterReceivedEmailProps;
 export type ContractReadyEmail = ContractReadyEmailProps;
+export type WalkthroughReminderEmail = WalkthroughReminderEmailProps;
 
 export async function renderOwnerBookingRequest(props: OwnerBookingEmail): Promise<string> {
   return render(OwnerBookingRequest(props));
@@ -23,6 +25,10 @@ export async function renderRenterRequestReceived(props: RenterReceivedEmail): P
 
 export async function renderContractReadyRenter(props: ContractReadyEmail): Promise<string> {
   return render(ContractReadyRenter(props));
+}
+
+export async function renderWalkthroughReminder(props: WalkthroughReminderEmail): Promise<string> {
+  return render(WalkthroughReminder(props));
 }
 
 export async function sendEmail(args: { to: string; subject: string; html: string }): Promise<void> {
