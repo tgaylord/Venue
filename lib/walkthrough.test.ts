@@ -105,3 +105,40 @@ describe("skipWalkthrough", () => {
     await close();
   });
 });
+
+describe("getWalkthroughSummary", () => {
+  it("reports pre/post lock state", async () => {
+    const { db, close, bookingId, itemId } = await seedWithItem();
+    const { getWalkthroughSummary, lockWalkthrough } = await import("@/lib/walkthrough");
+    let sum = await getWalkthroughSummary(db, bookingId);
+    expect(sum).toEqual({ preLocked: false, postLocked: false });
+    const start = await startCapture(db, { bookingId, kind: "pre", checklistItemId: itemId }, deps);
+    await commitCapture(db, { walkthroughId: start.walkthroughId, checklistItemId: itemId, sha256: "h", bytes: 1, contentType: "image/jpeg" });
+    await lockWalkthrough(db, start.walkthroughId);
+    sum = await getWalkthroughSummary(db, bookingId);
+    expect(sum.preLocked).toBe(true);
+    const { getWalkthroughWithPhotos } = await import("@/lib/walkthrough");
+    const wp = await getWalkthroughWithPhotos(db, bookingId, "pre");
+    expect(wp?.photos).toHaveLength(1);
+    await close();
+  });
+});
+
+describe("bookingsNeedingPreReminder", () => {
+  it("selects confirmed bookings inside the window, once", async () => {
+    const { db, close } = await createTestDb();
+    const [s] = await db.insert(studios).values({ clerkUserId: "u1", name: "S", slug: "s" }).returning();
+    const now = new Date("2026-08-01T15:00:00Z");
+    const [b] = await db.insert(bookings).values({
+      studioId: s.id, state: "confirmed", renterName: "R", renterEmail: "r@x.com",
+      startsAt: new Date("2026-08-01T17:00:00Z"), endsAt: new Date("2026-08-01T21:00:00Z"),
+    }).returning();
+    const { bookingsNeedingPreReminder, markPreReminderSent } = await import("@/lib/walkthrough");
+    let due = await bookingsNeedingPreReminder(db, now, 3);
+    expect(due.map((d) => d.bookingId)).toContain(b.id);
+    await markPreReminderSent(db, b.id, now);
+    due = await bookingsNeedingPreReminder(db, now, 3);
+    expect(due.map((d) => d.bookingId)).not.toContain(b.id);
+    await close();
+  });
+});
