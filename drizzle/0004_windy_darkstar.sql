@@ -1,5 +1,5 @@
 ALTER TABLE "bookings" ADD COLUMN "pre_reminder_sent_at" timestamp with time zone;--> statement-breakpoint
-CREATE UNIQUE INDEX "walkthrough_photos_item_unique" ON "walkthrough_photos" USING btree ("walkthrough_id","checklist_item_id") WHERE "checklist_item_id" IS NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "walkthrough_photos_item_unique" ON "walkthrough_photos" USING btree ("walkthrough_id","checklist_item_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "walkthroughs_booking_kind_unique" ON "walkthroughs" USING btree ("booking_id","kind");
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION forbid_locked_walkthrough() RETURNS trigger AS $$
