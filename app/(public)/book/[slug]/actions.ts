@@ -12,7 +12,11 @@ import { atlantaSlotToUtc, formatAtlantaRange } from "@/lib/tz";
 import {
   sendEmail, renderOwnerBookingRequest, renderRenterRequestReceived,
 } from "@/lib/email";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { parseIntake, type BookFormState } from "./forms";
+
+const BOOK_RATE_LIMIT = 5;
+const BOOK_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes per IP
 
 async function baseUrl(): Promise<string> {
   const configured = process.env.NEXT_PUBLIC_APP_URL;
@@ -21,6 +25,13 @@ async function baseUrl(): Promise<string> {
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? "https";
   return `${proto}://${host}`;
+}
+
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  const fwd = h.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  return h.get("x-real-ip") ?? "unknown";
 }
 
 async function ownerEmail(clerkUserId: string): Promise<string | null> {
@@ -39,11 +50,17 @@ export async function submitBooking(
   // Honeypot — real users never fill this; bounce silently to the studio page.
   if (String(fd.get("contact_preference_x") ?? "").length > 0) redirect(`/book/${slug}`);
 
+  const db = getDb();
+  const ip = await clientIp();
+  const rl = await checkRateLimit(db, `book:${ip}`, BOOK_RATE_LIMIT, BOOK_RATE_WINDOW_MS);
+  if (!rl.allowed) {
+    return { status: "error", error: "Too many requests — please wait a few minutes and try again." };
+  }
+
   const parsed = parseIntake(fd);
   if (!parsed.ok) return { status: "error", error: parsed.error };
   const data = parsed.data;
 
-  const db = getDb();
   const studio = await getStudioBySlug(db, slug);
   if (!studio || !studio.onboardingCompletedAt) return { status: "error", error: "This studio isn't taking bookings right now." };
 

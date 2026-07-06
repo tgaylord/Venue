@@ -185,5 +185,12 @@ export const renterTokens = pgTable(
   (t) => [uniqueIndex("renter_tokens_booking_purpose_idx").on(t.bookingId, t.purpose)]
 );
 
+// ── Rate limiting (fixed-window, DB-backed; keyed e.g. "book:<ip>") ───────
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull(),
+});
+
 export type Booking = typeof bookings.$inferSelect;
 export type BookingEvent = typeof bookingEvents.$inferSelect;
