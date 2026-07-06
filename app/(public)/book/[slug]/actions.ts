@@ -19,7 +19,7 @@ const BOOK_RATE_LIMIT = 5;
 const BOOK_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes per IP
 
 async function baseUrl(): Promise<string> {
-  const configured = process.env.NEXT_PUBLIC_APP_URL;
+  const configured = process.env.APP_URL;
   if (configured) return configured.replace(/\/+$/, "");
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
