@@ -40,8 +40,21 @@ export async function getStudioByClerkUserId(db: Db, clerkUserId: string): Promi
   return row;
 }
 
+export async function getStudioBySlug(db: Db, slug: string): Promise<Studio | undefined> {
+  const [row] = await db.select().from(studios).where(eq(studios.slug, slug));
+  return row;
+}
+
 export async function getSpacesForStudio(db: Db, studioId: string): Promise<Space[]> {
   return db.select().from(spaces).where(eq(spaces.studioId, studioId));
+}
+
+/** Largest occupancy across a studio's spaces (null if none is set). */
+export function maxOccupancyOf(spaces: { maxOccupancy: number | null }[]): number | null {
+  return spaces.reduce<number | null>(
+    (m, s) => (s.maxOccupancy != null ? Math.max(m ?? 0, s.maxOccupancy) : m),
+    null
+  );
 }
 
 export async function getChecklistForStudio(db: Db, studioId: string): Promise<ChecklistItem[]> {

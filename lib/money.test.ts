@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDollarsToCents } from "@/lib/money";
+import { parseDollarsToCents, formatCents } from "@/lib/money";
 
 describe("parseDollarsToCents", () => {
   it("parses plain dollars", () => {
@@ -18,5 +18,14 @@ describe("parseDollarsToCents", () => {
     expect(parseDollarsToCents("0")).toBeNull();
     expect(parseDollarsToCents("1.234")).toBeNull();
     expect(parseDollarsToCents("")).toBeNull();
+  });
+});
+
+describe("formatCents", () => {
+  it("drops cents when whole dollars", () => {
+    expect(formatCents(66000)).toBe("$660");
+  });
+  it("shows two decimals when needed", () => {
+    expect(formatCents(66050)).toBe("$660.50");
   });
 });
