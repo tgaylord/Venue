@@ -101,6 +101,7 @@ export const bookings = pgTable(
     depositStatus: depositStatusEnum("deposit_status").notNull().default("uncollected"),
     depositStatusAt: timestamp("deposit_status_at", { withTimezone: true }),
     contractSignedAt: timestamp("contract_signed_at", { withTimezone: true }),
+    preReminderSentAt: timestamp("pre_reminder_sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -136,7 +137,10 @@ export const walkthroughs = pgTable(
     lockedAt: timestamp("locked_at", { withTimezone: true }),
     acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
   },
-  (t) => [index("walkthroughs_booking_id_idx").on(t.bookingId)]
+  (t) => [
+    index("walkthroughs_booking_id_idx").on(t.bookingId),
+    uniqueIndex("walkthroughs_booking_kind_unique").on(t.bookingId, t.kind),
+  ]
 );
 
 export const walkthroughPhotos = pgTable(
@@ -153,7 +157,12 @@ export const walkthroughPhotos = pgTable(
     contentType: text("content_type"),
     sha256: text("sha256").notNull(),
   },
-  (t) => [index("walkthrough_photos_walkthrough_id_idx").on(t.walkthroughId)]
+  (t) => [
+    index("walkthrough_photos_walkthrough_id_idx").on(t.walkthroughId),
+    uniqueIndex("walkthrough_photos_item_unique")
+      .on(t.walkthroughId, t.checklistItemId)
+      .where(sql`"checklist_item_id" IS NOT NULL`),
+  ]
 );
 
 // ── Contracts (manual signing in v0.5 — no envelope_id) ──────────────────
