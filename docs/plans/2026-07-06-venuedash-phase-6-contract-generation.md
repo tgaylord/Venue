@@ -421,18 +421,24 @@ Expected: FAIL — cannot resolve `./template`.
 - [ ] **Step 3: Write `lib/contract/template.ts`**
 
 ```ts
-import { formatCents } from "@/lib/money";
 import { alcoholClause, vendorClause } from "./labels";
 import type { ContractDoc, ContractInput, ContractSection } from "./types";
 
 const DISCLAIMER =
   "VenueDash is not a law firm and does not provide legal advice. This is a template pending review by a licensed Georgia attorney before launch; have your own attorney review anything you sign.";
 
+// Contract-local money formatter: a legal document always shows cents ("$120.00").
+// Deliberately NOT the shared lib/money formatCents, which drops cents on whole
+// dollars ("$120") for UI chips — changing that would alter shipped owner UI.
+function money(cents: number): string {
+  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function buildStandardContract(input: ContractInput): ContractDoc {
   const rate =
-    input.hourlyRateCents != null ? `${formatCents(input.hourlyRateCents)} per hour` : "as agreed between the parties";
+    input.hourlyRateCents != null ? `${money(input.hourlyRateCents)} per hour` : "as agreed between the parties";
   const minimum = input.minHours != null ? `, with a ${input.minHours}-hour minimum` : "";
-  const deposit = input.depositCents != null ? formatCents(input.depositCents) : "the amount agreed between the parties";
+  const deposit = input.depositCents != null ? money(input.depositCents) : "the amount agreed between the parties";
   const alcohol = alcoholClause(input.alcoholPolicy);
   const vendor = vendorClause(input.vendorPolicy);
   const ladder = input.cancellationLadder;
