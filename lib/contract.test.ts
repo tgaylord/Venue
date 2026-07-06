@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { createTestDb } from "@/lib/domain/test-db";
-import { studios, bookings, contracts, type Booking } from "@/db/schema";
+import { studios, bookings, contracts, bookingEvents, type Booking } from "@/db/schema";
 import {
   getContractForBooking, upsertContract, markContractSigned, generateAndAdvance, contractKey,
 } from "./contract";
@@ -51,20 +51,30 @@ describe("contract DB access", () => {
       render: async () => { rendered = true; return Buffer.from("%PDF-fake"); },
       put: async (key) => { putKey = key; },
       now: () => new Date("2026-07-06T00:00:00Z"),
-    });
+    }, { type: "owner", id: "owner-1" });
     expect(rendered).toBe(true);
     expect(putKey).toBe(contractKey(b.id));
     expect(c.status).toBe("sent");
     expect(c.pdfR2Key).toBe(contractKey(b.id));
     const [row] = await db.select().from(bookings).where(eq(bookings.id, b.id));
     expect(row.state).toBe("awaiting_signature");
+    const [event] = await db
+      .select()
+      .from(bookingEvents)
+      .where(eq(bookingEvents.bookingId, b.id))
+      .orderBy(desc(bookingEvents.createdAt))
+      .limit(1);
+    expect(event.actorType).toBe("owner");
+    expect(event.actorId).toBe("owner-1");
   });
 
   it("generateAndAdvance is idempotent-safe: a second call from awaiting_signature throws (illegal transition)", async () => {
     const b = await seedBooking(db);
     const deps = { render: async () => Buffer.from("%PDF-fake"), put: async () => {} };
-    await generateAndAdvance(db, b, IDENTITY, deps);
+    await generateAndAdvance(db, b, IDENTITY, deps, { type: "owner", id: "owner-1" });
     const [advanced] = await db.select().from(bookings).where(eq(bookings.id, b.id));
-    await expect(generateAndAdvance(db, advanced, IDENTITY, deps)).rejects.toThrow();
+    await expect(
+      generateAndAdvance(db, advanced, IDENTITY, deps, { type: "owner", id: "owner-1" })
+    ).rejects.toThrow();
   });
 });

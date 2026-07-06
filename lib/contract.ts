@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { contracts, type Booking } from "@/db/schema";
-import { transitionBooking, type Db } from "@/lib/domain/transitions";
+import { transitionBooking, type Actor, type Db } from "@/lib/domain/transitions";
 import { contractInputFromBooking } from "@/lib/contract/input";
 import { buildStandardContract } from "@/lib/contract/template";
 import type { ContractDoc } from "@/lib/contract/types";
@@ -48,7 +48,7 @@ export type StudioIdentity = { studioName: string; studioAddress: string | null;
  * IllegalTransitionError, which the caller surfaces as "already generated".
  */
 export async function generateAndAdvance(
-  db: Db, booking: Booking, identity: StudioIdentity, deps: GenerateDeps
+  db: Db, booking: Booking, identity: StudioIdentity, deps: GenerateDeps, actor: Actor
 ): Promise<Contract> {
   const now = deps.now?.() ?? new Date();
   const doc = buildStandardContract(contractInputFromBooking(booking, identity));
@@ -56,6 +56,6 @@ export async function generateAndAdvance(
   const key = contractKey(booking.id);
   await deps.put(key, bytes, "application/pdf");
   const contract = await upsertContract(db, booking.id, key, now);
-  await transitionBooking(db, booking.id, "awaiting_signature", { type: "owner" }, { meta: { contractId: contract.id } });
+  await transitionBooking(db, booking.id, "awaiting_signature", actor, { meta: { contractId: contract.id } });
   return contract;
 }

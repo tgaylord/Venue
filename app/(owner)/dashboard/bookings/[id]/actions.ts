@@ -72,7 +72,7 @@ export async function approveBooking(
 export async function generateContract(
   bookingId: string, _prev: BookingActionState, _fd: FormData
 ): Promise<BookingActionState> {
-  const { db, booking, studio } = await ownerContext(bookingId);
+  const { db, userId, booking, studio } = await ownerContext(bookingId);
   if (booking.state !== "awaiting_contract") {
     return { status: "error", error: "This booking just changed — refresh and try again." };
   }
@@ -80,7 +80,8 @@ export async function generateContract(
     await generateAndAdvance(
       db, booking,
       { studioName: studio.name, studioAddress: studio.address, equipmentList: studio.equipmentList },
-      { render: renderContractPdf, put: putObject }
+      { render: renderContractPdf, put: putObject },
+      { type: "owner", id: userId }
     );
   } catch (e) {
     if (
