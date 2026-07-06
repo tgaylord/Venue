@@ -22,7 +22,20 @@ import { generateAndAdvance, markContractSigned } from "@/lib/contract";
 import { renderContractPdf } from "@/lib/contract/pdf";
 import { putObject } from "@/lib/storage";
 import { sendEmail, renderContractReadyRenter } from "@/lib/email";
+import { mintRenterToken } from "@/lib/tokens";
+import { headers } from "next/headers";
 import type { Studio } from "@/lib/studio";
+
+const CONTRACT_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 120; // 120 days
+
+async function baseUrl(): Promise<string> {
+  const configured = process.env.APP_URL;
+  if (configured) return configured.replace(/\/+$/, "");
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
 
 async function ownerContext(
   bookingId: string
@@ -94,14 +107,21 @@ export async function generateContract(
     throw e;
   }
 
-  // Best-effort renter notification — a send failure must never fail the generation.
+  // Best-effort renter notification with a self-service download link — a send
+  // failure must never fail the generation. The link uses a dedicated
+  // `purpose="contract"` token so it never rotates the renter's status link.
   try {
+    const origin = await baseUrl();
+    const contractToken = await mintRenterToken(
+      db, bookingId, "contract", new Date(Date.now() + CONTRACT_TOKEN_TTL_MS)
+    );
     await sendEmail({
       to: booking.renterEmail,
       subject: `Your rental agreement for ${studio.name} is ready`,
       html: await renderContractReadyRenter({
         studioName: studio.name,
         when: formatAtlantaRange(booking.startsAt, booking.endsAt),
+        contractUrl: `${origin}/contract/${contractToken}`,
       }),
     });
   } catch (e) {

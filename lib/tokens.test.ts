@@ -59,6 +59,21 @@ describe("renter tokens", () => {
     expect(rows.filter((r) => r.purpose === "status")).toHaveLength(1);
   });
 
+  it("status and contract tokens coexist for one booking (contract link never rotates status)", async () => {
+    const status = await mintRenterToken(db, bookingId, "status", future);
+    const contract = await mintRenterToken(db, bookingId, "contract", future);
+    // both remain independently valid — minting the contract token left status intact
+    expect(await verifyRenterToken(db, status, "status")).toBe(bookingId);
+    expect(await verifyRenterToken(db, contract, "contract")).toBe(bookingId);
+    // each is scoped to its own purpose
+    expect(await verifyRenterToken(db, status, "contract")).toBeNull();
+    expect(await verifyRenterToken(db, contract, "status")).toBeNull();
+    // one row per (booking, purpose): exactly one status and one contract row
+    const rows = await db.select().from(renterTokens).where(eq(renterTokens.bookingId, bookingId));
+    expect(rows.filter((r) => r.purpose === "status")).toHaveLength(1);
+    expect(rows.filter((r) => r.purpose === "contract")).toHaveLength(1);
+  });
+
   it("rejects garbage input", async () => {
     expect(await verifyRenterToken(db, "not-a-real-token", "status")).toBeNull();
   });
