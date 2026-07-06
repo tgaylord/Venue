@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { atlantaSlotToUtc, formatAtlantaRange } from "@/lib/tz";
+import { atlantaSlotToUtc, formatAtlantaRange, formatAtlantaRangeLong } from "@/lib/tz";
 
 describe("atlantaSlotToUtc", () => {
   it("converts a summer (EDT, UTC-4) evening slot to UTC", () => {
@@ -27,5 +27,15 @@ describe("formatAtlantaRange", () => {
     const s = new Date("2026-07-18T22:00:00.000Z");
     const e = new Date("2026-07-19T02:00:00.000Z");
     expect(formatAtlantaRange(s, e)).toBe("Sat, Jul 18, 6:00 PM – 10:00 PM");
+  });
+
+  it("formatAtlantaRangeLong includes the year and full month", () => {
+    const start = new Date("2026-08-15T18:00:00Z"); // 2 PM ET
+    const end = new Date("2026-08-15T22:00:00Z");   // 6 PM ET
+    const s = formatAtlantaRangeLong(start, end);
+    expect(s).toContain("2026");
+    expect(s).toContain("August");
+    expect(s).toMatch(/2:00\s?PM/);
+    expect(s).toMatch(/6:00\s?PM/);
   });
 });
