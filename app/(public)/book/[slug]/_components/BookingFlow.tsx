@@ -118,6 +118,19 @@ export default function BookingFlow({
               <div className={chip}>Studio gear hands-off</div>
             </div>
 
+            {vm.spaces.length > 0 && (
+              <>
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-[.04em] text-[#8a867c]">Spaces</div>
+                <div className="mb-5 flex flex-wrap gap-1.5">
+                  {vm.spaces.map((s) => (
+                    <div key={s.name} className={chip}>
+                      {s.name}{s.maxOccupancy != null ? ` · up to ${s.maxOccupancy}` : ""}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
             <div className="mb-2 text-[11px] font-bold uppercase tracking-[.04em] text-[#8a867c]">Pick a date</div>
             <div className="mb-3 flex gap-1.5 overflow-x-auto pb-0.5">
               {vm.days.map((d) => {

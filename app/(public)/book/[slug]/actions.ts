@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { clerkClient } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
-import { getStudioBySlug, getSpacesForStudio } from "@/lib/studio";
+import { getStudioBySlug, getSpacesForStudio, maxOccupancyOf } from "@/lib/studio";
 import { createBooking, getBusyIntervals, type TermsSnapshot } from "@/lib/booking";
 import { hasConflict } from "@/lib/availability";
 import { atlantaSlotToUtc, formatAtlantaRange } from "@/lib/tz";
@@ -15,6 +15,8 @@ import {
 import { parseIntake, type BookFormState } from "./forms";
 
 async function baseUrl(): Promise<string> {
+  const configured = process.env.NEXT_PUBLIC_APP_URL;
+  if (configured) return configured.replace(/\/+$/, "");
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -46,7 +48,7 @@ export async function submitBooking(
   if (!studio || !studio.onboardingCompletedAt) return { status: "error", error: "This studio isn't taking bookings right now." };
 
   if (data.durationHours < (studio.minHours ?? 1)) {
-    return { status: "error", error: `This studio has a ${studio.minHours}-hour minimum.` };
+    return { status: "error", error: `This studio has a ${studio.minHours ?? 1}-hour minimum.` };
   }
 
   const { startsAt, endsAt } = atlantaSlotToUtc(data.dateISO, data.startHour, data.durationHours);
@@ -58,9 +60,7 @@ export async function submitBooking(
   }
 
   const spaces = await getSpacesForStudio(db, studio.id);
-  const maxOccupancy = spaces.reduce<number | null>(
-    (m, s) => (s.maxOccupancy != null ? Math.max(m ?? 0, s.maxOccupancy) : m), null
-  );
+  const maxOccupancy = maxOccupancyOf(spaces);
   const termsSnapshot: TermsSnapshot = {
     hourlyRateCents: studio.hourlyRateCents, minHours: studio.minHours,
     cancellationLadder: studio.cancellationLadder,

@@ -49,6 +49,14 @@ export async function getSpacesForStudio(db: Db, studioId: string): Promise<Spac
   return db.select().from(spaces).where(eq(spaces.studioId, studioId));
 }
 
+/** Largest occupancy across a studio's spaces (null if none is set). */
+export function maxOccupancyOf(spaces: { maxOccupancy: number | null }[]): number | null {
+  return spaces.reduce<number | null>(
+    (m, s) => (s.maxOccupancy != null ? Math.max(m ?? 0, s.maxOccupancy) : m),
+    null
+  );
+}
+
 export async function getChecklistForStudio(db: Db, studioId: string): Promise<ChecklistItem[]> {
   return db.select().from(checklistItems)
     .where(eq(checklistItems.studioId, studioId))

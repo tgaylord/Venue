@@ -5,7 +5,7 @@ import { studios } from "@/db/schema";
 import {
   slugify, createStudio, getStudioByClerkUserId, getSpacesForStudio, getChecklistForStudio,
   updateProfile, updateHouseRules, updatePricing, replaceChecklistItems, completeOnboarding,
-  DEFAULT_CHECKLIST, STANDARD_LADDER, getStudioBySlug,
+  DEFAULT_CHECKLIST, STANDARD_LADDER, getStudioBySlug, maxOccupancyOf,
 } from "@/lib/studio";
 
 let db: TestDb;
@@ -125,6 +125,15 @@ describe("step updates", () => {
     await completeOnboarding(db, studio.id);
     const [second] = await db.select().from(studios).where(eq(studios.id, studio.id));
     expect(second.onboardingCompletedAt?.getTime()).toBe(first.onboardingCompletedAt?.getTime());
+  });
+});
+
+describe("maxOccupancyOf", () => {
+  it("returns the max across spaces, ignoring nulls, or null when none set", () => {
+    expect(maxOccupancyOf([{ maxOccupancy: 40 }, { maxOccupancy: 8 }])).toBe(40);
+    expect(maxOccupancyOf([{ maxOccupancy: null }, { maxOccupancy: 8 }])).toBe(8);
+    expect(maxOccupancyOf([{ maxOccupancy: null }])).toBeNull();
+    expect(maxOccupancyOf([])).toBeNull();
   });
 });
 

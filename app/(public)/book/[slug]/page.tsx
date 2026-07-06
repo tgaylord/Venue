@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getDb } from "@/lib/db";
-import { getStudioBySlug, getSpacesForStudio } from "@/lib/studio";
+import { getStudioBySlug, getSpacesForStudio, maxOccupancyOf } from "@/lib/studio";
 import { getBusyIntervals } from "@/lib/booking";
 import { submitBooking } from "./actions";
 import BookingFlow, { type BookViewModel } from "./_components/BookingFlow";
@@ -14,9 +14,7 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
   if (!studio || !studio.onboardingCompletedAt) notFound();
 
   const spaces = await getSpacesForStudio(db, studio.id);
-  const maxOccupancy = spaces.reduce<number | null>(
-    (m, s) => (s.maxOccupancy != null ? Math.max(m ?? 0, s.maxOccupancy) : m), null
-  );
+  const maxOccupancy = maxOccupancyOf(spaces);
 
   const now = new Date();
   const to = new Date(now.getTime() + DAYS_AHEAD * 24 * 60 * 60 * 1000);
