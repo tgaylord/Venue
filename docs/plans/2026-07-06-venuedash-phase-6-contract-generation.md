@@ -239,7 +239,7 @@ Expected: FAIL — cannot resolve `./labels`.
 import type { AlcoholPolicy, VendorPolicy } from "./types";
 
 const DRAM_SHOP =
-  " The renter and their guests acknowledge sole responsibility for the conduct and sobriety of attendees; nothing in this agreement waives any liability that O.C.G.A. § 51-1-40 does not permit to be waived.";
+  " The renter and their guests acknowledge sole responsibility for the conduct and sobriety of all attendees, consistent with the duties Georgia law (O.C.G.A. § 51-1-40) places on any person who furnishes alcohol.";
 
 export const ALCOHOL_CLAUSES: Record<AlcoholPolicy, { clause: string; plainEnglish: string }> = {
   prohibited: {
