@@ -45,6 +45,11 @@ export async function getStudioBySlug(db: Db, slug: string): Promise<Studio | un
   return row;
 }
 
+export async function getStudioById(db: Db, id: string): Promise<Studio | undefined> {
+  const [row] = await db.select().from(studios).where(eq(studios.id, id));
+  return row;
+}
+
 export async function getSpacesForStudio(db: Db, studioId: string): Promise<Space[]> {
   return db.select().from(spaces).where(eq(spaces.studioId, studioId));
 }
