@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { getStudioByClerkUserId } from "@/lib/studio";
 import { getBookingForOwner, getBookingEvents } from "@/lib/booking";
+import { getContractForBooking } from "@/lib/contract";
 import { toBookingView } from "@/lib/domain/booking-view";
 import { formatAtlantaRange } from "@/lib/tz";
 import { formatCents } from "@/lib/money";
@@ -24,6 +25,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
   const booking = await getBookingForOwner(db, id, studio.id);
   if (!booking) notFound();
   const events = await getBookingEvents(db, id);
+  const contract = await getContractForBooking(db, id);
   const view = toBookingView(booking, new Date());
   const snap = (booking.rateSnapshot ?? {}) as Record<string, unknown>;
 
@@ -66,7 +68,10 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           {view.effectiveState === "awaiting_contract" ? (
             <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
               <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Contract</div>
-              <p className="mt-2 text-sm text-owner-muted">Contract generation arrives in the next release. Approved and waiting.</p>
+              <p className="mt-2 text-sm text-owner-text">
+                Generate the Standard Event Rental Agreement from this booking&rsquo;s terms. It&rsquo;s stored for download,
+                and the booking moves to awaiting signature so you can send it for signing.
+              </p>
               <div className="mt-4"><ActionButtons bookingId={booking.id} actions={view.legalActions} /></div>
             </div>
           ) : null}
@@ -74,7 +79,17 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           {view.effectiveState === "awaiting_signature" ? (
             <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
               <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Signature</div>
-              <p className="mt-2 text-sm text-owner-text">Once the renter has signed the rental agreement, mark it signed to confirm.</p>
+              <p className="mt-2 text-sm text-owner-text">
+                Download the agreement, run it through your e-sign tool, then mark it signed once the renter has signed.
+              </p>
+              {contract?.pdfR2Key ? (
+                <a
+                  href={`/dashboard/bookings/${booking.id}/contract`}
+                  className="mt-3 inline-block rounded-lg border border-owner-border px-4 py-2 text-sm text-owner-text hover:border-owner-accent"
+                >
+                  Download agreement (PDF)
+                </a>
+              ) : null}
               <div className="mt-4"><ActionButtons bookingId={booking.id} actions={view.legalActions} /></div>
             </div>
           ) : null}
@@ -141,7 +156,16 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
               <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Contract</div>
-              <p className="mt-2 text-sm text-owner-muted">Standard Event Rental · GA jurisdiction · generated next release.</p>
+              {contract?.status === "signed" ? (
+                <p className="mt-2 text-sm text-success">Signed{contract.signedAt ? ` · ${contract.signedAt.toLocaleDateString()}` : ""}</p>
+              ) : contract?.pdfR2Key ? (
+                <p className="mt-2 text-sm text-owner-text">
+                  Generated &amp; sent ·{" "}
+                  <a className="underline hover:text-owner-accent" href={`/dashboard/bookings/${booking.id}/contract`}>Download PDF</a>
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-owner-muted">Standard Event Rental · GA jurisdiction · not yet generated.</p>
+              )}
             </div>
             <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
               <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Damage deposit</div>
