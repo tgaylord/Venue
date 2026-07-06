@@ -1340,8 +1340,7 @@ export default function BookingFlow({
           <form action={formAction}>
             {/* Honeypot — hidden from real users, tempting to bots */}
             <input type="text" name="contact_preference_x" tabIndex={-1} autoComplete="one-time-code" aria-hidden className="hidden" />
-            <input type="hidden" name="renterName" value="" readOnly hidden />
-            {/* Real hidden fields carrying the collected values into the action */}
+            {/* Hidden fields carry the collected picker/intake values into the action */}
             <HiddenFields
               dateISO={dateISO} startHour={startHour ?? 0} durationHours={durationHours}
               eventType={eventType} headcount={headcount} byob={byob} outsideVendors={outsideVendors} notes={notes}
@@ -1385,8 +1384,6 @@ export default function BookingFlow({
   }
 }
 ```
-
-> Implementer note: the stray `<input type="hidden" name="renterName" value="" hidden />` placeholder in the form is a mistake — remove it; `RenterContactFields` supplies the real `renterName`. (Left here as an explicit deletion so the two `renterName` inputs don't both submit.)
 
 - [ ] **Step 3: Verify typecheck + lint + build**
 
