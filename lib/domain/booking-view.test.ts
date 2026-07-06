@@ -44,11 +44,21 @@ describe("toBookingView — legalActions", () => {
   it("pending offers approve, decline, cancel", () => {
     expect(toBookingView(bk("pending", START, END), BEFORE).legalActions).toEqual(["approve", "decline", "cancel"]);
   });
-  it("awaiting_contract offers only cancel (contract-gen is Phase 6)", () => {
-    expect(toBookingView(bk("awaiting_contract", START, END), BEFORE).legalActions).toEqual(["cancel"]);
+  it("awaiting_contract offers generate_contract and cancel", () => {
+    expect(toBookingView(bk("awaiting_contract", START, END), BEFORE).legalActions).toEqual(["generate_contract", "cancel"]);
   });
   it("awaiting_signature offers mark_signed and cancel", () => {
     expect(toBookingView(bk("awaiting_signature", START, END), BEFORE).legalActions).toEqual(["mark_signed", "cancel"]);
+  });
+  it("offers generate_contract (not mark_signed) on an awaiting_contract booking", () => {
+    const view = toBookingView(bk("awaiting_contract", START, END), BEFORE);
+    expect(view.legalActions).toContain("generate_contract");
+    expect(view.legalActions).not.toContain("mark_signed");
+  });
+  it("still offers mark_signed on an awaiting_signature booking", () => {
+    const view = toBookingView(bk("awaiting_signature", START, END), BEFORE);
+    expect(view.legalActions).toContain("mark_signed");
+    expect(view.legalActions).not.toContain("generate_contract");
   });
   it("confirmed before the event offers cancel", () => {
     expect(toBookingView(bk("confirmed", START, END), BEFORE).legalActions).toEqual(["cancel"]);

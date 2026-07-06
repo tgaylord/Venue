@@ -4,7 +4,7 @@ import { deriveEffectiveState } from "./effective-state";
 import { LEGAL_TRANSITIONS, type BookingState } from "./states";
 
 export type DashboardGroup = "needs_action" | "in_progress" | "past";
-export type OwnerAction = "approve" | "decline" | "cancel" | "mark_signed";
+export type OwnerAction = "approve" | "generate_contract" | "decline" | "cancel" | "mark_signed";
 export type ChipTone = "success" | "warning" | "danger" | "muted";
 
 export type BookingView = {
@@ -32,17 +32,17 @@ const GROUP: Record<BookingState, DashboardGroup> = {
 };
 
 // Which owner action a legal transition target maps to. Targets with no entry
-// are not owner-driven in Phase 5: awaiting_signature (contract-gen = Phase 6),
-// event_day/post_event (clock), closed (close-out = deferred).
+// are not owner-driven: event_day/post_event (clock), closed (close-out = deferred).
 const TARGET_TO_ACTION: Partial<Record<BookingState, OwnerAction>> = {
   awaiting_contract: "approve",
+  awaiting_signature: "generate_contract",
   declined: "decline",
   canceled: "cancel",
   confirmed: "mark_signed",
 };
 
 // Stable button order regardless of LEGAL_TRANSITIONS ordering.
-const ACTION_ORDER: OwnerAction[] = ["approve", "decline", "mark_signed", "cancel"];
+const ACTION_ORDER: OwnerAction[] = ["approve", "generate_contract", "decline", "mark_signed", "cancel"];
 
 const CHIP: Record<BookingState, { label: string; tone: ChipTone }> = {
   pending: { label: "Pending review", tone: "warning" },
