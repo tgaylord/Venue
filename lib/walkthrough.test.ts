@@ -78,3 +78,30 @@ describe("startCapture / commitCapture", () => {
     await close();
   });
 });
+
+describe("lockWalkthrough", () => {
+  it("blocks lock until required item count is met, then is idempotent", async () => {
+    const { db, close, bookingId, itemId } = await seedWithItem();
+    const { lockWalkthrough, IncompleteWalkthroughError } = await import("@/lib/walkthrough");
+    const start = await startCapture(db, { bookingId, kind: "pre", checklistItemId: itemId }, deps);
+    await expect(lockWalkthrough(db, start.walkthroughId, { requireItemCount: 1 }))
+      .rejects.toBeInstanceOf(IncompleteWalkthroughError);
+    await commitCapture(db, { walkthroughId: start.walkthroughId, checklistItemId: itemId, sha256: "h", bytes: 1, contentType: "image/jpeg" });
+    const first = await lockWalkthrough(db, start.walkthroughId, { requireItemCount: 1 });
+    expect(first).toEqual({ locked: true, alreadyLocked: false });
+    const second = await lockWalkthrough(db, start.walkthroughId, { requireItemCount: 1 });
+    expect(second).toEqual({ locked: false, alreadyLocked: true });
+    await close();
+  });
+});
+
+describe("skipWalkthrough", () => {
+  it("clears deposit_protected", async () => {
+    const { db, close, bookingId } = await seedWithItem();
+    const { skipWalkthrough } = await import("@/lib/walkthrough");
+    await skipWalkthrough(db, bookingId);
+    const [b] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
+    expect(b.depositProtected).toBe(false);
+    await close();
+  });
+});

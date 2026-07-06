@@ -1,5 +1,5 @@
-import { and, eq } from "drizzle-orm";
-import { walkthroughs, walkthroughPhotos } from "@/db/schema";
+import { and, eq, sql, isNull } from "drizzle-orm";
+import { walkthroughs, walkthroughPhotos, bookings } from "@/db/schema";
 import type { Db } from "@/lib/domain/transitions";
 
 export type Walkthrough = typeof walkthroughs.$inferSelect;
@@ -61,4 +61,31 @@ export async function commitCapture(
     })
     .returning();
   return row;
+}
+
+export class IncompleteWalkthroughError extends Error {}
+
+export async function lockWalkthrough(
+  db: Db, walkthroughId: string,
+  opts: { requireItemCount?: number } = {}, now: () => Date = () => new Date()
+): Promise<{ locked: boolean; alreadyLocked: boolean }> {
+  if (opts.requireItemCount != null) {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(walkthroughPhotos)
+      .where(eq(walkthroughPhotos.walkthroughId, walkthroughId));
+    if (count < opts.requireItemCount) {
+      throw new IncompleteWalkthroughError(`need ${opts.requireItemCount} photos, have ${count}`);
+    }
+  }
+  const updated = await db.update(walkthroughs)
+    .set({ lockedAt: now() })
+    .where(and(eq(walkthroughs.id, walkthroughId), isNull(walkthroughs.lockedAt)))
+    .returning({ id: walkthroughs.id });
+  if (updated.length > 0) return { locked: true, alreadyLocked: false };
+  return { locked: false, alreadyLocked: true };
+}
+
+export async function skipWalkthrough(db: Db, bookingId: string): Promise<void> {
+  await db.update(bookings).set({ depositProtected: false }).where(eq(bookings.id, bookingId));
 }
