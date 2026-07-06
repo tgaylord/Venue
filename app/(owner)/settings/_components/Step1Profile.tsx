@@ -5,8 +5,11 @@ import { saveProfile } from "../actions";
 import { WIZARD_IDLE } from "../forms";
 import type { Space } from "@/lib/studio";
 
-const inputCls =
-  "w-full rounded-[9px] border border-owner-border bg-owner-panel px-3.5 py-3 text-sm text-owner-text placeholder:text-[#5e6070] focus:border-owner-accent focus:outline-none";
+// No width utility here — full-width fields add w-full; the spaces row uses
+// flex-1 / w-[90px], which w-full would override (it crushed the name input).
+const baseInputCls =
+  "rounded-[9px] border border-owner-border bg-owner-panel px-3.5 py-3 text-sm text-owner-text placeholder:text-[#5e6070] focus:border-owner-accent focus:outline-none";
+const inputCls = `w-full ${baseInputCls}`;
 const labelCls = "mb-1.5 block text-xs font-semibold text-owner-muted";
 
 export default function Step1Profile({ initial }: {
@@ -40,11 +43,11 @@ export default function Step1Profile({ initial }: {
               <div key={i} className="flex gap-2">
                 <input
                   name="spaceName" defaultValue={row.name} placeholder="e.g. Main floor + cyc wall"
-                  aria-label={`Space ${i + 1} name`} className={`${inputCls} flex-1`}
+                  aria-label={`Space ${i + 1} name`} className={`${baseInputCls} min-w-0 flex-1`}
                 />
                 <input
                   name="spaceCap" defaultValue={row.maxOccupancy ?? ""} placeholder="Cap"
-                  aria-label={`Space ${i + 1} occupancy cap`} className={`${inputCls} w-[90px]`}
+                  aria-label={`Space ${i + 1} occupancy cap`} className={`${baseInputCls} w-[90px]`}
                 />
               </div>
             ))}
