@@ -1,4 +1,4 @@
-import { and, eq, sql, isNull, gt, lte, asc } from "drizzle-orm";
+import { and, eq, sql, isNull, gt, lte, asc, inArray } from "drizzle-orm";
 import { walkthroughs, walkthroughPhotos, bookings } from "@/db/schema";
 import type { Db } from "@/lib/domain/transitions";
 
@@ -123,9 +123,11 @@ export async function bookingsNeedingPreReminder(
       lte(bookings.startsAt, end),
       isNull(bookings.preReminderSentAt),
     ));
+  if (rows.length === 0) return [];
   // Exclude those with a started pre-walkthrough.
   const started = await db.select({ bookingId: walkthroughs.bookingId })
-    .from(walkthroughs).where(eq(walkthroughs.kind, "pre"));
+    .from(walkthroughs)
+    .where(and(eq(walkthroughs.kind, "pre"), inArray(walkthroughs.bookingId, rows.map((r) => r.bookingId))));
   const startedSet = new Set(started.map((r) => r.bookingId));
   return rows.filter((r) => !startedSet.has(r.bookingId));
 }
