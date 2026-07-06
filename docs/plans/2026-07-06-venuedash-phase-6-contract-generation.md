@@ -572,8 +572,8 @@ git commit -m "feat(contract): pure buildStandardContract content model"
 - Test: `lib/contract/input.test.ts`
 
 **Interfaces:**
-- Consumes: `Booking` from `@/db/schema`; `ContractInput`, `CancellationLadder` from `./types`; `formatAtlantaRange` from `@/lib/tz`.
-- Produces: `contractInputFromBooking(booking: Booking, identity: { studioName: string; studioAddress: string | null; equipmentList: string | null }): ContractInput`
+- Consumes: `Booking` from `@/db/schema`; `ContractInput`, `CancellationLadder` from `./types`; `formatAtlantaRangeLong` from `@/lib/tz` (**new** — a year-inclusive sibling of `formatAtlantaRange`; a legal contract must show the year, and the UI `formatAtlantaRange` deliberately omits it and is locked by its test + 3 call sites, so this task adds `formatAtlantaRangeLong` to `lib/tz.ts` with its own focused test rather than changing the existing formatter).
+- Produces: `contractInputFromBooking(booking: Booking, identity: { studioName: string; studioAddress: string | null; equipmentList: string | null }): ContractInput`; `formatAtlantaRangeLong(startsAt, endsAt): string` on `@/lib/tz`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -634,9 +634,24 @@ Expected: FAIL — cannot resolve `./input`.
 
 - [ ] **Step 3: Write `lib/contract/input.ts`**
 
+First add a year-inclusive formatter to `lib/tz.ts` (leave `formatAtlantaRange` untouched) with a focused test in `lib/tz.test.ts`:
+
+```ts
+export function formatAtlantaRangeLong(startsAt: Date, endsAt: Date): string {
+  const day = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ, weekday: "long", year: "numeric", month: "long", day: "numeric",
+  }).format(startsAt);
+  const t = (dt: Date) =>
+    new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(dt);
+  return `${day}, ${t(startsAt)} – ${t(endsAt)}`;
+}
+```
+
+Then `lib/contract/input.ts`:
+
 ```ts
 import type { Booking } from "@/db/schema";
-import { formatAtlantaRange } from "@/lib/tz";
+import { formatAtlantaRangeLong } from "@/lib/tz";
 import type { CancellationLadder, ContractInput } from "./types";
 
 type Snap = {
@@ -673,7 +688,7 @@ export function contractInputFromBooking(
     renterEmail: booking.renterEmail,
     renterPhone: booking.renterPhone,
     eventType: booking.eventType,
-    when: formatAtlantaRange(booking.startsAt, booking.endsAt),
+    when: formatAtlantaRangeLong(booking.startsAt, booking.endsAt),
     headcount: booking.headcount,
     byob: booking.byob,
     outsideVendors: booking.outsideVendors,
