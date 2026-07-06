@@ -7,10 +7,10 @@ import {
   createStudio, updateProfile, updateHouseRules, updatePricing,
   replaceChecklistItems, completeOnboarding, getStudioByClerkUserId,
 } from "@/lib/studio";
-import { parseProfileForm, parseRulesForm, parsePricingForm, parseChecklistForm } from "./forms";
-
-export type WizardFormState = { status: "idle" | "error"; fieldErrors: Record<string, string> };
-export const WIZARD_IDLE: WizardFormState = { status: "idle", fieldErrors: {} };
+import {
+  parseProfileForm, parseRulesForm, parsePricingForm, parseChecklistForm,
+  type WizardFormState,
+} from "./forms";
 
 async function requireUserId(): Promise<string> {
   const { userId } = await auth();

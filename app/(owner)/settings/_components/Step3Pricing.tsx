@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { savePricing, WIZARD_IDLE } from "../actions";
+import { savePricing } from "../actions";
+import { WIZARD_IDLE } from "../forms";
 
 const labelCls = "mb-1.5 block text-xs font-semibold text-owner-muted";
 const inputCls =

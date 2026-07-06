@@ -91,3 +91,10 @@ export function parseChecklistForm(fd: FormData): ParseResult<{ items: { name: s
   }
   return { ok: true, data: { items } };
 }
+
+// Shared wizard form state. Lives here (a plain module) rather than in
+// actions.ts: a "use server" file may only export async functions — a
+// constant exported from one reaches client components as a broken
+// server-reference and crashes the first state access.
+export type WizardFormState = { status: "idle" | "error"; fieldErrors: Record<string, string> };
+export const WIZARD_IDLE: WizardFormState = { status: "idle", fieldErrors: {} };

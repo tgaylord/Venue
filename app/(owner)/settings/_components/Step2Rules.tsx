@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveRules, WIZARD_IDLE } from "../actions";
+import { saveRules } from "../actions";
+import { WIZARD_IDLE } from "../forms";
 
 const labelCls = "mb-2 block text-xs font-semibold text-owner-muted";
 const inputCls =

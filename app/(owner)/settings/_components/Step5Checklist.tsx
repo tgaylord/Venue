@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveChecklist, WIZARD_IDLE } from "../actions";
+import { saveChecklist } from "../actions";
+import { WIZARD_IDLE } from "../forms";
 import CopyLinkButton from "@/app/(owner)/_components/CopyLinkButton";
 
 const inputCls =

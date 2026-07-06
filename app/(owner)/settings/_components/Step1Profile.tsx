@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveProfile, WIZARD_IDLE } from "../actions";
+import { saveProfile } from "../actions";
+import { WIZARD_IDLE } from "../forms";
 import type { Space } from "@/lib/studio";
 
 const inputCls =
