@@ -15,6 +15,7 @@ import {
 import type { BookingState } from "@/lib/domain/states";
 import type { Booking } from "@/db/schema";
 import { deriveEffectiveState } from "@/lib/domain/effective-state";
+import { toBookingView } from "@/lib/domain/booking-view";
 import { parseDepositStatus, type BookingActionState } from "./forms";
 
 async function ownerContext(
@@ -97,7 +98,10 @@ export async function markSigned(
 export async function setDeposit(
   bookingId: string, _prev: BookingActionState, fd: FormData
 ): Promise<BookingActionState> {
-  const { db } = await ownerContext(bookingId);
+  const { db, booking } = await ownerContext(bookingId);
+  if (!toBookingView(booking, new Date()).depositControlActive) {
+    return { status: "error", error: "The deposit can't be updated for this booking yet." };
+  }
   const parsed = parseDepositStatus(fd);
   if (!parsed.ok) return { status: "error", error: parsed.error };
   await setDepositStatus(db, bookingId, parsed.status);
