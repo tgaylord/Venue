@@ -106,8 +106,8 @@ async function main() {
     hourlyRateCents: 9500,
     minHours: 4,
     depositCents: 40000,
-    alcoholPolicy: "byob_with_agreement",
-    vendorPolicy: "approved_in_advance",
+    alcoholPolicy: "byob_with_acknowledgment",
+    vendorPolicy: "pre_approval",
     noiseCurfew: "22:00",
     cleanupWindowMin: 60,
     cancellationLadder: { full: 30, half: 14, none: 0 },
@@ -126,7 +126,16 @@ async function main() {
       ...intake,
       studioId: studio.id,
       depositCents: studio.depositCents,
-      rateSnapshot: { hourlyRateCents: studio.hourlyRateCents, minHours: studio.minHours, cancellationLadder: studio.cancellationLadder },
+      rateSnapshot: {
+        hourlyRateCents: studio.hourlyRateCents,
+        minHours: studio.minHours,
+        cancellationLadder: studio.cancellationLadder,
+        alcoholPolicy: studio.alcoholPolicy,
+        vendorPolicy: studio.vendorPolicy,
+        noiseCurfew: studio.noiseCurfew,
+        cleanupWindowMin: studio.cleanupWindowMin,
+        maxOccupancy: 40,
+      },
     }).returning();
     for (const step of PATHS[target]) {
       await transitionBooking(db, b.id, step.to, step.actor, { meta: { seed: true } });
