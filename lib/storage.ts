@@ -33,3 +33,7 @@ export async function getSignedDownloadUrl(key: string, expiresInSeconds = 300):
   const cmd = new GetObjectCommand({ Bucket: bucket(), Key: key });
   return getSignedUrl(client(), cmd, { expiresIn: expiresInSeconds });
 }
+
+export async function putObject(key: string, body: Buffer, contentType: string): Promise<void> {
+  await client().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: body, ContentType: contentType }));
+}

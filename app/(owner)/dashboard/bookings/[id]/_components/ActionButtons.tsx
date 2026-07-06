@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import type { OwnerAction } from "@/lib/domain/booking-view";
 import {
-  approveBooking, declineBooking, cancelBooking, markSigned,
+  approveBooking, generateContract, declineBooking, cancelBooking, markSigned,
 } from "../actions";
 import { BOOKING_ACTION_IDLE, type BookingActionState } from "../forms";
 
@@ -11,6 +11,7 @@ type Bound = (prev: BookingActionState, fd: FormData) => Promise<BookingActionSt
 
 const META: Record<OwnerAction, { label: string; className: string; fn: (id: string) => Bound }> = {
   approve: { label: "Approve request", className: "bg-success text-[#08130c]", fn: (id) => approveBooking.bind(null, id) },
+  generate_contract: { label: "Generate & send contract", className: "bg-owner-accent text-[#0d0e14]", fn: (id) => generateContract.bind(null, id) },
   mark_signed: { label: "Mark contract signed", className: "bg-owner-accent text-[#0d0e14]", fn: (id) => markSigned.bind(null, id) },
   decline: { label: "Decline", className: "border border-owner-border text-owner-muted", fn: (id) => declineBooking.bind(null, id) },
   cancel: { label: "Cancel booking", className: "border border-[#5a2822] text-danger", fn: (id) => cancelBooking.bind(null, id) },

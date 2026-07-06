@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { renderTestEmail, renderOwnerBookingRequest, renderRenterRequestReceived } from "@/lib/email";
+import {
+  renderTestEmail, renderOwnerBookingRequest, renderRenterRequestReceived,
+  renderContractReadyRenter,
+} from "@/lib/email";
 
 describe("email rendering", () => {
   it("renders the test template to HTML containing the name", async () => {
@@ -29,5 +32,23 @@ describe("booking emails", () => {
     });
     expect(html).toContain("Westview Studio");
     expect(html).toContain("https://venuedash.example/status/abc");
+  });
+
+  it("contract-ready email renders the download link when a contractUrl is given", async () => {
+    const html = await renderContractReadyRenter({
+      studioName: "Westview Studio", when: "Sat, Jul 18, 6:00 PM – 10:00 PM",
+      contractUrl: "https://venuedash.example/contract/tok123",
+    });
+    expect(html).toContain("Westview Studio");
+    expect(html).toContain("https://venuedash.example/contract/tok123");
+    expect(html).toContain("Download your rental agreement");
+  });
+
+  it("contract-ready email omits the download button when no contractUrl", async () => {
+    const html = await renderContractReadyRenter({
+      studioName: "Westview Studio", when: "Sat, Jul 18, 6:00 PM – 10:00 PM",
+    });
+    expect(html).toContain("Westview Studio");
+    expect(html).not.toContain("/contract/");
   });
 });

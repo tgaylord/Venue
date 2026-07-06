@@ -164,11 +164,12 @@ export const contracts = pgTable(
     bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
     template: contractTemplateEnum("template").notNull().default("standard"),
     status: contractStatusEnum("status").notNull().default("sent"),
+    pdfR2Key: text("pdf_r2_key"),
     signedPdfR2Key: text("signed_pdf_r2_key"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     signedAt: timestamp("signed_at", { withTimezone: true }),
   },
-  (t) => [index("contracts_booking_id_idx").on(t.bookingId)]
+  (t) => [uniqueIndex("contracts_booking_id_unique").on(t.bookingId)]
 );
 
 // ── Renter tokens (hashed at rest; one active per booking+purpose) ───────

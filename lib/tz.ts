@@ -39,3 +39,12 @@ export function formatAtlantaRange(startsAt: Date, endsAt: Date): string {
     new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(dt);
   return `${day}, ${t(startsAt)} – ${t(endsAt)}`;
 }
+
+export function formatAtlantaRangeLong(startsAt: Date, endsAt: Date): string {
+  const day = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ, weekday: "long", year: "numeric", month: "long", day: "numeric",
+  }).format(startsAt);
+  const t = (dt: Date) =>
+    new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(dt);
+  return `${day}, ${t(startsAt)} – ${t(endsAt)}`;
+}
