@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/lib/domain/test-db";
-import { studios, bookings, bookingEvents, renterTokens } from "@/db/schema";
+import { studios, bookingEvents } from "@/db/schema";
 import { createBooking, getBusyIntervals, type TermsSnapshot } from "@/lib/booking";
 import { verifyRenterToken } from "@/lib/tokens";
 import { transitionBooking } from "@/lib/domain/transitions";
