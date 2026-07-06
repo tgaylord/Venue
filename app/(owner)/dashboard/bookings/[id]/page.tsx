@@ -101,6 +101,19 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             </div>
           ) : null}
 
+          {view.effectiveState === "closed" || view.effectiveState === "declined" || view.effectiveState === "canceled" ? (
+            <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">{view.chip.label}</div>
+              <p className="mt-2 text-sm text-owner-muted">
+                {view.effectiveState === "declined"
+                  ? "You declined this request."
+                  : view.effectiveState === "canceled"
+                    ? "This booking was canceled."
+                    : "This booking is closed out."}
+              </p>
+            </div>
+          ) : null}
+
           {/* Intake + agreed terms (always useful for the owner) */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
