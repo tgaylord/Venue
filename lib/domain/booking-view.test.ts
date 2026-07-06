@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import type { Booking } from "@/db/schema";
 import type { BookingState } from "@/lib/domain/states";
-import { toBookingView } from "@/lib/domain/booking-view";
+import { toBookingView, walkthroughEntries } from "@/lib/domain/booking-view";
 
 // Minimal Booking factory — toBookingView reads only id/state/startsAt/endsAt.
 function bk(state: BookingState, startsAt: Date, endsAt: Date): Booking {
@@ -92,5 +92,24 @@ describe("toBookingView — chip", () => {
     expect(toBookingView(bk("confirmed", START, END), BEFORE).chip).toEqual({ label: "Confirmed", tone: "success" });
     expect(toBookingView(bk("confirmed", START, END), DURING).chip).toEqual({ label: "Event today", tone: "success" });
     expect(toBookingView(bk("declined", START, END), FAR).chip.tone).toBe("danger");
+  });
+});
+
+describe("walkthroughEntries", () => {
+  const none = { preLocked: false, postLocked: false };
+  it("offers pre on confirmed and event_day", () => {
+    expect(walkthroughEntries("confirmed", none)).toEqual(["start_pre_walkthrough"]);
+    expect(walkthroughEntries("event_day", none)).toEqual(["start_pre_walkthrough"]);
+  });
+  it("offers post only on post_event", () => {
+    expect(walkthroughEntries("post_event", none)).toEqual(["start_post_walkthrough"]);
+  });
+  it("hides an entry once its walkthrough is locked", () => {
+    expect(walkthroughEntries("event_day", { preLocked: true, postLocked: false })).toEqual([]);
+    expect(walkthroughEntries("post_event", { preLocked: true, postLocked: true })).toEqual([]);
+  });
+  it("offers nothing before confirmed or on terminal states", () => {
+    expect(walkthroughEntries("pending", none)).toEqual([]);
+    expect(walkthroughEntries("closed", none)).toEqual([]);
   });
 });

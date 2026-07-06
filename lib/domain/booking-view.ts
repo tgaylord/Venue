@@ -84,3 +84,19 @@ export function toBookingView(booking: Booking, now: Date): BookingView {
     chip: CHIP[effectiveState],
   };
 }
+
+export type WalkthroughEntry = "start_pre_walkthrough" | "start_post_walkthrough";
+
+export function walkthroughEntries(
+  effectiveState: BookingState,
+  locks: { preLocked: boolean; postLocked: boolean }
+): WalkthroughEntry[] {
+  const out: WalkthroughEntry[] = [];
+  if ((effectiveState === "confirmed" || effectiveState === "event_day") && !locks.preLocked) {
+    out.push("start_pre_walkthrough");
+  }
+  if (effectiveState === "post_event" && !locks.postLocked) {
+    out.push("start_post_walkthrough");
+  }
+  return out;
+}
