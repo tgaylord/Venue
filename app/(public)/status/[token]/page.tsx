@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { verifyRenterToken } from "@/lib/tokens";
+import { getContractForBooking } from "@/lib/contract";
 import { formatAtlantaRange } from "@/lib/tz";
 import { bookings, studios } from "@/db/schema";
 import type { BookingState } from "@/lib/domain/states";
@@ -27,6 +28,7 @@ export default async function StatusPage({ params }: { params: Promise<{ token: 
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId));
   if (!booking) notFound();
   const [studio] = await db.select({ name: studios.name }).from(studios).where(eq(studios.id, booking.studioId));
+  const contract = await getContractForBooking(db, bookingId);
 
   const badge = BADGE[booking.state];
   const when = formatAtlantaRange(booking.startsAt, booking.endsAt);
@@ -42,6 +44,20 @@ export default async function StatusPage({ params }: { params: Promise<{ token: 
       <p className="mt-6 text-xs leading-relaxed text-[#8a867c]">
         Bookmark this page to check your request status anytime — no account needed.
       </p>
+      {contract?.pdfR2Key ? (
+        <div className="mt-6 rounded-xl border border-renter-border bg-white p-4">
+          <div className="font-mono text-[9.5px] uppercase tracking-[.12em] text-[#8a867c]">Rental agreement</div>
+          <p className="mt-1 text-[13px] leading-relaxed text-renter-ink">
+            Your agreement is ready. A separate signing request will arrive by email.
+          </p>
+          <a
+            href={`/status/${token}/contract`}
+            className="mt-3 inline-block rounded-lg border border-renter-border px-4 py-2 text-[13px] text-renter-ink"
+          >
+            Download agreement (PDF)
+          </a>
+        </div>
+      ) : null}
     </main>
   );
 }
