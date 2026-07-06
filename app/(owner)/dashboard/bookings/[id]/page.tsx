@@ -108,53 +108,53 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             </div>
           ) : null}
 
-          {view.effectiveState === "event_day" ? (
-            entries.includes("start_pre_walkthrough") ? (
-              <div className="rounded-xl border border-[#4a3a1a] bg-[#1b1710] p-4">
-                <div className="font-mono text-[10px] uppercase tracking-wider text-warning">Event today · pre-event walkthrough</div>
-                <p className="mt-2 text-sm text-owner-text">
-                  Photograph every area before {booking.renterName} arrives — each photo is server-timestamped and
-                  locked into a timestamped record.
-                </p>
-                <Link
-                  href={`/dashboard/bookings/${booking.id}/walkthrough/pre`}
-                  className="mt-4 inline-block rounded-lg bg-owner-accent px-4 py-2 text-sm font-bold text-[#0d0e14]"
-                >
-                  Start pre-event walkthrough
-                </Link>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-[#4a3a1a] bg-[#1b1710] p-4">
-                <div className="font-mono text-[10px] uppercase tracking-wider text-warning">Event today</div>
-                <p className="mt-2 text-sm text-owner-text">Pre-event documentation locked.</p>
-              </div>
-            )
+          {view.effectiveState === "event_day" && !entries.includes("start_pre_walkthrough") ? (
+            <div className="rounded-xl border border-[#4a3a1a] bg-[#1b1710] p-4">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-warning">Event today</div>
+              <p className="mt-2 text-sm text-owner-text">Pre-event documentation locked.</p>
+            </div>
           ) : null}
 
-          {view.effectiveState === "post_event" ? (
-            entries.includes("start_post_walkthrough") ? (
-              <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
-                <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Post-event walkthrough</div>
-                <p className="mt-2 text-sm text-owner-text">
-                  Photograph the space after the event — each photo is server-timestamped and locked into a
-                  timestamped record.
-                </p>
-                <Link
-                  href={`/dashboard/bookings/${booking.id}/walkthrough/post`}
-                  className="mt-4 inline-block rounded-lg bg-owner-accent px-4 py-2 text-sm font-bold text-[#0d0e14]"
-                >
-                  Start post-event walkthrough
-                </Link>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
-                <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Event finished</div>
-                <p className="mt-2 text-sm text-owner-text">
-                  Post-event documentation locked. If everything checked out, return the renter&rsquo;s deposit and
-                  update its status below.
-                </p>
-              </div>
-            )
+          {view.effectiveState === "post_event" && !entries.includes("start_post_walkthrough") ? (
+            <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Event finished</div>
+              <p className="mt-2 text-sm text-owner-text">
+                Post-event documentation locked. If everything checked out, return the renter&rsquo;s deposit and
+                update its status below.
+              </p>
+            </div>
+          ) : null}
+
+          {entries.includes("start_pre_walkthrough") ? (
+            <div className="rounded-xl border border-[#4a3a1a] bg-[#1b1710] p-4">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-warning">Pre-event walkthrough</div>
+              <p className="mt-2 text-sm text-owner-text">
+                Photograph every area before {booking.renterName} arrives — each photo is server-timestamped and
+                locked into a timestamped record.
+              </p>
+              <Link
+                href={`/dashboard/bookings/${booking.id}/walkthrough/pre`}
+                className="mt-4 inline-block rounded-lg bg-owner-accent px-4 py-2 text-sm font-bold text-[#0d0e14]"
+              >
+                Start pre-event walkthrough
+              </Link>
+            </div>
+          ) : null}
+
+          {entries.includes("start_post_walkthrough") ? (
+            <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Post-event walkthrough</div>
+              <p className="mt-2 text-sm text-owner-text">
+                Photograph the space after the event — each photo is server-timestamped and locked into a
+                timestamped record.
+              </p>
+              <Link
+                href={`/dashboard/bookings/${booking.id}/walkthrough/post`}
+                className="mt-4 inline-block rounded-lg bg-owner-accent px-4 py-2 text-sm font-bold text-[#0d0e14]"
+              >
+                Start post-event walkthrough
+              </Link>
+            </div>
           ) : null}
 
           {view.effectiveState === "closed" || view.effectiveState === "declined" || view.effectiveState === "canceled" ? (

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Photo, Walkthrough, WalkthroughKind } from "@/lib/walkthrough";
 
 type WalkthroughRecordProps = {
@@ -28,15 +27,21 @@ export default function WalkthroughRecord({ label, bookingId, kind, record }: Wa
       </p>
       {photos.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2">
-          {photos.map((photo) => (
-            <Link
-              key={photo.id}
-              href={`/dashboard/bookings/${bookingId}/walkthrough/${kind}/photo/${photo.id}`}
-              className="rounded border border-owner-border px-2 py-1 font-mono text-[10px] text-owner-muted hover:border-owner-accent hover:text-owner-text"
-            >
-              {photo.serverCapturedAt.toLocaleTimeString()}
-            </Link>
-          ))}
+          {photos.map((photo) => {
+            const href = `/dashboard/bookings/${bookingId}/walkthrough/${kind}/photo/${photo.id}`;
+            const time = photo.serverCapturedAt.toLocaleTimeString();
+            return (
+              <a key={photo.id} href={href} className="block overflow-hidden rounded border border-owner-border hover:border-owner-accent">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={href}
+                  alt={`${label} photo captured ${time}`}
+                  loading="lazy"
+                  className="h-16 w-16 object-cover"
+                />
+              </a>
+            );
+          })}
         </div>
       ) : null}
     </div>
