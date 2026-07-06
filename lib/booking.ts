@@ -1,5 +1,5 @@
-import { and, eq, gt, lt, notInArray } from "drizzle-orm";
-import { bookings, availabilityBlocks, type Booking } from "@/db/schema";
+import { and, asc, eq, gt, lt, notInArray } from "drizzle-orm";
+import { bookings, availabilityBlocks, bookingEvents, type Booking, type BookingEvent } from "@/db/schema";
 import type { Db } from "@/lib/domain/transitions";
 import { mintRenterToken } from "@/lib/tokens";
 import { TERMINAL_STATES } from "@/lib/domain/states";
@@ -82,4 +82,45 @@ export async function getBusyIntervals(
       gt(availabilityBlocks.endsAt, from),
     ));
   return [...b, ...a];
+}
+
+export type DepositStatus = "uncollected" | "collected" | "returned";
+
+/** All bookings for a studio, oldest event first. Grouping/effective-state derivation happens in the view-model, not SQL. */
+export async function listBookingsForStudio(db: Db, studioId: string): Promise<Booking[]> {
+  return db.select().from(bookings)
+    .where(eq(bookings.studioId, studioId))
+    .orderBy(asc(bookings.startsAt));
+}
+
+/** A single booking scoped to its owning studio. null if absent or owned elsewhere — the ownership boundary. */
+export async function getBookingForOwner(
+  db: Db, bookingId: string, studioId: string
+): Promise<Booking | null> {
+  const [row] = await db.select().from(bookings)
+    .where(and(eq(bookings.id, bookingId), eq(bookings.studioId, studioId)));
+  return row ?? null;
+}
+
+/** Append-only transition history for the lifecycle rail, oldest first. */
+export async function getBookingEvents(db: Db, bookingId: string): Promise<BookingEvent[]> {
+  return db.select().from(bookingEvents)
+    .where(eq(bookingEvents.bookingId, bookingId))
+    .orderBy(asc(bookingEvents.createdAt));
+}
+
+/** Manual deposit toggle — a plain column update (not a state transition), stamps the change time. */
+export async function setDepositStatus(
+  db: Db, bookingId: string, status: DepositStatus
+): Promise<Booking> {
+  const [row] = await db.update(bookings)
+    .set({ depositStatus: status, depositStatusAt: new Date() })
+    .where(eq(bookings.id, bookingId))
+    .returning();
+  return row;
+}
+
+/** Records when the contract was marked signed. The confirmed transition is done separately via transitionBooking. */
+export async function setContractSignedAt(db: Db, bookingId: string, at: Date): Promise<void> {
+  await db.update(bookings).set({ contractSignedAt: at }).where(eq(bookings.id, bookingId));
 }

@@ -15,6 +15,16 @@ const eslintConfig = defineConfig([
     // Vendored prototype — not part of the Next.js app, not ours to lint.
     "prototype/**",
   ]),
+  // Honor the `_`-prefix convention for intentionally-unused bindings — e.g.
+  // the `(_prev, _fd)` params required by React's useActionState signature.
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
