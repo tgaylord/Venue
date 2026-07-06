@@ -75,7 +75,6 @@ export default function CaptureFlow(props: Props) {
     } catch { setUseFallback(true); }
   }
   function stopCamera() { streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null; }
-  useEffect(() => () => stopCamera(), []);
 
   useEffect(() => {
     // Synchronizing with the camera hardware (an external system) — startCamera's
@@ -83,7 +82,11 @@ export default function CaptureFlow(props: Props) {
     // analysis can't distinguish from a "derive state during render" anti-pattern.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (phase === "capture" && !useFallback && !webview) { startCamera(); }
-    if (phase !== "capture") { stopCamera(); }
+    // Cleanup runs before every re-invocation of this effect (e.g. `idx` bumping on
+    // "Next area") AND on unmount — guaranteeing the prior stream's tracks are
+    // stopped before a new getUserMedia() call ever fires, and stopped for good
+    // when the component unmounts or leaves the capture phase.
+    return () => { stopCamera(); };
   }, [phase, idx, useFallback, webview]);
 
   async function uploadBlob(item: Item, blob: Blob) {
