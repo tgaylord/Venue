@@ -17,10 +17,16 @@ import type { Booking } from "@/db/schema";
 import { deriveEffectiveState } from "@/lib/domain/effective-state";
 import { toBookingView } from "@/lib/domain/booking-view";
 import { parseDepositStatus, type BookingActionState } from "./forms";
+import { formatAtlantaRange } from "@/lib/tz";
+import { generateAndAdvance, markContractSigned } from "@/lib/contract";
+import { renderContractPdf } from "@/lib/contract/pdf";
+import { putObject } from "@/lib/storage";
+import { sendEmail, renderContractReadyRenter } from "@/lib/email";
+import type { Studio } from "@/lib/studio";
 
 async function ownerContext(
   bookingId: string
-): Promise<{ db: Db; userId: string; booking: Booking }> {
+): Promise<{ db: Db; userId: string; booking: Booking; studio: Studio }> {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
   const db = getDb();
@@ -28,7 +34,7 @@ async function ownerContext(
   if (!studio) redirect("/settings");
   const booking = await getBookingForOwner(db, bookingId, studio.id);
   if (!booking) notFound();
-  return { db, userId, booking };
+  return { db, userId, booking, studio };
 }
 
 function revalidate(bookingId: string): void {
@@ -63,6 +69,48 @@ export async function approveBooking(
   return runTransition(db, bookingId, "awaiting_contract", userId);
 }
 
+export async function generateContract(
+  bookingId: string, _prev: BookingActionState, _fd: FormData
+): Promise<BookingActionState> {
+  const { db, booking, studio } = await ownerContext(bookingId);
+  if (booking.state !== "awaiting_contract") {
+    return { status: "error", error: "This booking just changed — refresh and try again." };
+  }
+  try {
+    await generateAndAdvance(
+      db, booking,
+      { studioName: studio.name, studioAddress: studio.address, equipmentList: studio.equipmentList },
+      { render: renderContractPdf, put: putObject }
+    );
+  } catch (e) {
+    if (
+      e instanceof IllegalTransitionError ||
+      e instanceof ConcurrentTransitionError ||
+      e instanceof BookingNotFoundError
+    ) {
+      return { status: "error", error: "This booking just changed — refresh and try again." };
+    }
+    throw e;
+  }
+
+  // Best-effort renter notification — a send failure must never fail the generation.
+  try {
+    await sendEmail({
+      to: booking.renterEmail,
+      subject: `Your rental agreement for ${studio.name} is ready`,
+      html: await renderContractReadyRenter({
+        studioName: studio.name,
+        when: formatAtlantaRange(booking.startsAt, booking.endsAt),
+      }),
+    });
+  } catch (e) {
+    console.error("renter contract email failed (generation stands):", e);
+  }
+
+  revalidate(bookingId);
+  return { status: "idle", error: "" };
+}
+
 export async function declineBooking(
   bookingId: string, _prev: BookingActionState, _fd: FormData
 ): Promise<BookingActionState> {
@@ -91,6 +139,7 @@ export async function markSigned(
   );
   if (result.status === "error") return result;
   await setContractSignedAt(db, bookingId, signedAt); // stamp after the guarded transition
+  try { await markContractSigned(db, bookingId, signedAt); } catch (e) { console.error("contract-row sign flip failed (confirm stands):", e); }
   revalidate(bookingId);
   return result;
 }
