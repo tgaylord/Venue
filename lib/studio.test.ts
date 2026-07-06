@@ -5,7 +5,7 @@ import { studios } from "@/db/schema";
 import {
   slugify, createStudio, getStudioByClerkUserId, getSpacesForStudio, getChecklistForStudio,
   updateProfile, updateHouseRules, updatePricing, replaceChecklistItems, completeOnboarding,
-  DEFAULT_CHECKLIST, STANDARD_LADDER,
+  DEFAULT_CHECKLIST, STANDARD_LADDER, getStudioBySlug,
 } from "@/lib/studio";
 
 let db: TestDb;
@@ -125,5 +125,15 @@ describe("step updates", () => {
     await completeOnboarding(db, studio.id);
     const [second] = await db.select().from(studios).where(eq(studios.id, studio.id));
     expect(second.onboardingCompletedAt?.getTime()).toBe(first.onboardingCompletedAt?.getTime());
+  });
+});
+
+describe("getStudioBySlug", () => {
+  it("returns the studio for a known slug and undefined otherwise", async () => {
+    const { db, close } = await createTestDb();
+    await db.insert(studios).values({ clerkUserId: "slug-u", name: "Slug Studio", slug: "slug-studio" });
+    expect((await getStudioBySlug(db, "slug-studio"))?.name).toBe("Slug Studio");
+    expect(await getStudioBySlug(db, "nope")).toBeUndefined();
+    await close();
   });
 });
