@@ -159,9 +159,9 @@ export const walkthroughPhotos = pgTable(
   },
   (t) => [
     index("walkthrough_photos_walkthrough_id_idx").on(t.walkthroughId),
+    // full unique index — Postgres NULLs-distinct already allows multiple NULL checklist_item_id rows
     uniqueIndex("walkthrough_photos_item_unique")
-      .on(t.walkthroughId, t.checklistItemId)
-      .where(sql`"checklist_item_id" IS NOT NULL`),
+      .on(t.walkthroughId, t.checklistItemId),
   ]
 );
 
