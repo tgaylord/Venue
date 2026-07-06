@@ -13,14 +13,19 @@ export default function DepositControl({
   );
   return (
     <div>
-      <div className="inline-flex overflow-hidden rounded-lg border border-owner-border">
+      <div className="flex flex-col gap-1">
         {DEPOSIT_STATUSES.map((s) => (
           <form key={s} action={formAction}>
             <input type="hidden" name="status" value={s} />
             <button
               type="submit"
               disabled={pending || s === current}
-              className={`px-3 py-1.5 text-xs ${s === current ? "bg-owner-accent text-[#0d0e14]" : "text-owner-muted hover:text-owner-text"} disabled:opacity-60`}
+              aria-current={s === current}
+              className={`w-full rounded-md border px-2.5 py-1.5 text-left text-xs ${
+                s === current
+                  ? "border-owner-accent bg-owner-accent font-medium text-[#0d0e14] disabled:opacity-100"
+                  : "border-owner-border text-owner-muted hover:text-owner-text disabled:opacity-60"
+              }`}
             >
               {DEPOSIT_LABELS[s]}
             </button>
