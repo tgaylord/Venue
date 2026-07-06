@@ -13,19 +13,11 @@ import {
   sendEmail, renderOwnerBookingRequest, renderRenterRequestReceived,
 } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { baseUrl } from "@/lib/url";
 import { parseIntake, type BookFormState } from "./forms";
 
 const BOOK_RATE_LIMIT = 5;
 const BOOK_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes per IP
-
-async function baseUrl(): Promise<string> {
-  const configured = process.env.APP_URL;
-  if (configured) return configured.replace(/\/+$/, "");
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  return `${proto}://${host}`;
-}
 
 async function clientIp(): Promise<string> {
   const h = await headers();
