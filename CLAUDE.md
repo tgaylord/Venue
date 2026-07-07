@@ -2,7 +2,7 @@
 
 VenueDash is a SaaS platform for Atlanta studio owners who rent their spaces for private events. It handles the paperwork layer of event rentals: signed contracts, timestamped condition-photo walkthroughs, and damage-deposit status tracking.
 
-## Current build — v0.5, Phases 0–6 merged; Phase 7 (photo checklist PWA — the differentiator) is complete, PR open pending human UI review
+## Current build — v0.5, Phases 0–7 all merged; a v0.5 UI/flow polish sweep is the next work (to be brainstormed + planned in a separate session), then ship
 
 We are building **v0.5**, a deliberately scoped first release. Read these before working:
 
@@ -12,8 +12,8 @@ We are building **v0.5**, a deliberately scoped first release. Read these before
 - **Full v1.0 vision (deferred):** `docs/v1.0-vision/`
 
 **Status by phase (v0.5 spec §5):**
-- ✅ Phase 0 — Foundation (PR #6) · ✅ Phase 1 — Landing + waitlist + ToS (PR #7) · ✅ Phase 2 — Domain core (PR #8) · ✅ Phase 3 — Onboarding wizard + dashboard empty state (PR #9) · ✅ Phase 4 — Public booking page + intake (PR #11) · ✅ Phase 5 — Owner dashboard + booking detail (PR #13) · ✅ Phase 6 — Contract generation (PR #15; migration `0003` applied to Neon; UI walk confirmed both owner + renter downloads + PDF) · ✅ Phase 7 — Photo checklist PWA (branch `feat/phase-7-photo-checklist`, all 14 tasks complete, PR **open** — **NOT yet merged to main**, pending the required ops below + a human UI walk on the preview)
-- **Phase 7 required ops before the human walk (not code — see "Phase 7 as built" section below for detail):** apply migration `0004` to Neon, configure R2 bucket CORS for `PUT`, set `CRON_SECRET` on Vercel Production.
+- ✅ Phase 0 — Foundation (PR #6) · ✅ Phase 1 — Landing + waitlist + ToS (PR #7) · ✅ Phase 2 — Domain core (PR #8) · ✅ Phase 3 — Onboarding wizard + dashboard empty state (PR #9) · ✅ Phase 4 — Public booking page + intake (PR #11) · ✅ Phase 5 — Owner dashboard + booking detail (PR #13) · ✅ Phase 6 — Contract generation (PR #15; migration `0003` applied to Neon; UI walk confirmed both owner + renter downloads + PDF) · ✅ Phase 7 — Photo checklist PWA (**PR #17 merged**; follow-up **PR #18 merged** — captured-photo preview, click-to-enlarge lightbox on the confirmation + review screens, clearer iOS Safari install hint; migration `0004` applied to Neon; R2 CORS for `PUT`/`GET` configured; `CRON_SECRET` set on Production; **human UI walk confirmed** capture → retake → lock → gallery + lightbox on a real iPhone)
+- **Phase 7 ops — DONE:** `0004` applied to Neon, R2 bucket CORS configured, `CRON_SECRET` set on Vercel Production. **Still open (non-blocking):** the external scheduler that pings `POST /api/cron/walkthrough-reminders` is not yet wired (GitHub Actions / cron-job.org) — the route + secret are live on Production, so reminders fire as soon as a scheduler hits it; best-effort, so this doesn't block ship.
 - Then → **ship**: onboard a studio, run a real booking through a locked post-event walkthrough, hand-invoice customer #1 (60-day free beta ⇒ no billing code yet).
 - **Open launch gate (not code):** a licensed **Georgia attorney must review the contract template** (spec §7) — it currently ships behind a "not legal advice / pending Georgia attorney review" disclaimer.
 
@@ -74,19 +74,28 @@ We are building **v0.5**, a deliberately scoped first release. Read these before
 
 ## Phase 7 as built (photo checklist PWA) — read before next phase
 
-- **Capture surface:** owner-authed full-screen route `/dashboard/bookings/[id]/walkthrough/[kind]` (`kind` is `pre`|`post`), gated on effective state (pre: `confirmed`|`event_day`; post: `post_event`). `CaptureFlow` client component — `getUserMedia` primary + `<input capture>` file-input fallback + a webview interstitial (`lib/capture.ts` `isInAppWebview`) — does client-side compression to JPEG, then per-item: compress → `sha256Hex` → `requestUpload` (presigned PUT) → PUT to R2 → `commitPhoto` (records server timestamp + geotag + sha256). The camera effect stops the prior `MediaStream` before re-acquiring on advance (cleanup) — do not regress this; it was a real bug (orphaned tracks degrade iOS Safari).
+- **Capture surface:** owner-authed full-screen route `/dashboard/bookings/[id]/walkthrough/[kind]` (`kind` is `pre`|`post`), gated on effective state (pre: `confirmed`|`event_day`; post: `post_event`). `CaptureFlow` client component — `getUserMedia` primary + `<input capture>` file-input fallback + a webview interstitial (`lib/capture.ts` `isInAppWebview`) — does client-side compression to JPEG, then per-item: compress → `sha256Hex` → `requestUpload` (presigned PUT) → PUT to R2 → `commitPhoto` (records server timestamp + geotag + sha256). The camera effect stops the prior `MediaStream` before re-acquiring on advance (cleanup) — do not regress this; it was a real bug (orphaned tracks degrade iOS Safari). The captured JPEG is shown on the confirmation screen and as thumbnails on the review grid (in-session object URLs, revoked on retake/overwrite/unmount); both are tappable to open a full-screen viewer (PR #18).
 - **Domain module `lib/walkthrough.ts`:** `getOrCreateWalkthrough` (idempotent per booking+kind), `startCapture`/`commitCapture` (per-item upsert), `lockWalkthrough` (CAS on `locked_at IS NULL` + all-items-present guard), `skipWalkthrough` (sets `deposit_protected=false`), read models, and reminder queries. R2 access is injected as deps, so the module is fully PGlite-testable.
 - **CORRECTION to the earlier assumption in this doc:** the schema did **not** previously forbid update/delete on locked walkthroughs — there were no triggers. **Migration `0004` adds PL/pgSQL BEFORE UPDATE/DELETE triggers** (`forbid_locked_walkthrough` / `forbid_locked_walkthrough_photo`) that raise once `locked_at IS NOT NULL` (verified PGlite supports them). Also in `0004`: `unique(booking_id, kind)`, a **full** `unique(walkthrough_id, checklist_item_id)` (deliberately **not partial** — a partial index can't be inferred by `ON CONFLICT`; NULLs-distinct semantics make full equivalent for this data), and `bookings.pre_reminder_sent_at`.
 - **`deposit_protected`:** starts `true`; an explicit Skip flips it `false` with a persistent "no defensible timestamped record exists" warning on the booking detail.
 - **Owner gallery:** the booking detail "Condition documentation" card shows pre/post status plus real `<img>` thumbnails, served via a presigned owner route `GET /dashboard/bookings/[id]/walkthrough/[kind]/photo/[photoId]` (302 to R2, 300s expiry, studio-scoped).
 - **Reminder cron:** `POST /api/cron/walkthrough-reminders` (bearer `CRON_SECRET`, best-effort per-booking, idempotent via `pre_reminder_sent_at`). `proxy.ts` leaves `/api` ungated — the bearer check is the sole guard on this route.
 - **PWA:** `app/manifest.ts` (standalone, `#0b0c0f`, icons) + `appleWebApp` metadata + `InstallHint` (uses `useSyncExternalStore` for standalone-mode detection). Icons are placeholder solid-color PNGs — refine in a UI pass. No service worker (deferred).
-- **REQUIRED OPS before the human walk (do these first):**
-  1. `npm run db:migrate` — applies `0004` to Neon (triggers + indexes + the new column).
-  2. **R2 bucket CORS must allow `PUT` (and `GET`) from the preview + production origins, with the `Content-Type` header** — without this, browser presigned PUTs fail CORS.
-  3. Set `CRON_SECRET` on Vercel Production; wire an external scheduler (GitHub Actions or cron-job.org) to hit the route with `Authorization: Bearer $CRON_SECRET`.
+- **OPS (status) — mostly done:** ✅ `0004` applied to Neon (triggers + indexes + column); ✅ R2 bucket CORS allows `PUT`/`GET` + `Content-Type` from `https://*.vercel.app` (covers preview + `venue-gold.vercel.app`) and `http://localhost:3000`; ✅ `CRON_SECRET` set on Vercel Production. ⏳ **Only remaining:** wire an external scheduler (GitHub Actions or cron-job.org) to `POST /api/cron/walkthrough-reminders` with `Authorization: Bearer $CRON_SECRET` — route + secret are already live, so the scheduler is all that's missing. If R2 CORS is ever wrong, browser presigned PUTs fail silently (CORS) — that's the first thing to check if capture uploads stop working.
 - **Deferred to v1.0 (carry-forward):** renter acknowledgment (`walkthroughs.acknowledged_at` stays null), auto-close `post_event → closed` + clock-state persistence, damage-claim flow, a renter-facing photo view, a service worker, server-side re-hash verification (client-computed sha256 is trusted for MVP). Copy discipline held throughout: **"timestamped documentation," never "immutable evidence."**
-- **Minor backlog for FINAL/future triage:** `commitCapture` throws `WalkthroughLockedError` on a not-found walkthrough (semantic overload — could confuse UI); manifest icons are placeholders.
+- **Minor backlog for FINAL/future triage:** `commitCapture` throws `WalkthroughLockedError` on a not-found walkthrough (semantic overload — could confuse UI); manifest icons are placeholder solid-color PNGs.
+
+## Next work — v0.5 UI/flow polish sweep (planned in a SEPARATE session — not yet scoped)
+
+Phase 7 completed the last major build phase; the whole v0.5 flow (onboard → book → approve → contract → confirm → pre/post walkthrough → lock) is walkable end-to-end on Production. Before launch the human wants a **UI sweep + flow changes across surfaces** — to be brainstormed and planned fresh in a new session (start with `superpowers:brainstorming`, not by editing code). Known candidates to fold into that sweep:
+- Refine the **placeholder PWA icons** (currently flat `#7a86ff` tiles) → a real icon set.
+- **Deposit-status control** UI pass (carried from Phase 5 — its own full-width row/segmented control instead of the cramped 3-col status grid).
+- **`POLICY_LABELS`** map so "Agreed terms" shows plain-English policies instead of raw enums.
+- `commitCapture`'s `WalkthroughLockedError`-on-not-found semantic overload (distinct error type).
+- General owner/renter surface polish + any flow reordering the human wants.
+- Wire the **reminder cron scheduler** (see Phase 7 ops) if reminders are wanted at launch.
+
+**Then → ship:** onboard a real studio, run a booking through a locked post-event walkthrough, hand-invoice customer #1. Launch gate (not code) still open: **Georgia attorney review of the contract template** (spec §7).
 
 ## What's in this repo (unchanged references)
 
