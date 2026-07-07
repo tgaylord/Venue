@@ -65,7 +65,7 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             <div className="rounded-xl border border-[#4a3a1a] bg-[#1b1710] p-4">
               <div className="font-mono text-[10px] uppercase tracking-wider text-warning">New booking request</div>
               <p className="mt-2 text-sm text-owner-text">
-                {booking.renterName} requested this date. Approving moves it toward the contract step.
+                {booking.renterName} requested this date. Approving generates the rental agreement and sends it to the renter.
               </p>
               <div className="mt-4"><ActionButtons bookingId={booking.id} actions={view.legalActions} /></div>
             </div>
@@ -83,10 +83,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
           ) : null}
 
           {view.effectiveState === "awaiting_signature" ? (
-            <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
-              <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Signature</div>
+            <div className="rounded-xl border border-[#4a3a1a] bg-[#1b1710] p-4">
+              <div className="font-mono text-[10px] uppercase tracking-wider text-warning">Get this contract signed</div>
               <p className="mt-2 text-sm text-owner-text">
-                Download the agreement, run it through your e-sign tool, then mark it signed once the renter has signed.
+                The renter already has a download link by email. To get it signed, use any free e-sign
+                tool (DocuSign, Adobe Sign, HelloSign) or print and sign at the pre-event walkthrough.
               </p>
               {contract?.pdfR2Key ? (
                 <a
@@ -96,7 +97,12 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
                   Download agreement (PDF)
                 </a>
               ) : null}
-              <div className="mt-4"><ActionButtons bookingId={booking.id} actions={view.legalActions} /></div>
+              <div className="mt-4 border-t border-owner-border pt-4">
+                <p className="mb-3 text-sm text-owner-muted">
+                  Once both parties have signed, mark it below to confirm the booking.
+                </p>
+                <ActionButtons bookingId={booking.id} actions={view.legalActions} />
+              </div>
             </div>
           ) : null}
 
@@ -117,11 +123,12 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
 
           {view.effectiveState === "post_event" && !entries.includes("start_post_walkthrough") ? (
             <div className="rounded-xl border border-owner-border bg-owner-panel p-4">
-              <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Event finished</div>
+              <div className="font-mono text-[10px] uppercase tracking-wider text-owner-muted">Ready to close out</div>
               <p className="mt-2 text-sm text-owner-text">
-                Post-event documentation locked. If everything checked out, return the renter&rsquo;s deposit and
-                update its status below.
+                Post-event documentation locked. Return the renter&rsquo;s deposit off-platform, update its
+                status below, then close out this booking when everything is settled.
               </p>
+              <div className="mt-4"><ActionButtons bookingId={booking.id} actions={view.legalActions} /></div>
             </div>
           ) : null}
 

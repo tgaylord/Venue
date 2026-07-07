@@ -4,7 +4,7 @@ import { deriveEffectiveState } from "./effective-state";
 import { LEGAL_TRANSITIONS, type BookingState } from "./states";
 
 export type DashboardGroup = "needs_action" | "in_progress" | "past";
-export type OwnerAction = "approve" | "generate_contract" | "decline" | "cancel" | "mark_signed";
+export type OwnerAction = "approve_and_send" | "generate_contract" | "decline" | "cancel" | "mark_signed" | "close_out";
 export type ChipTone = "success" | "warning" | "danger" | "muted";
 
 export type BookingView = {
@@ -34,7 +34,7 @@ const GROUP: Record<BookingState, DashboardGroup> = {
 // Which owner action a legal transition target maps to. Targets with no entry
 // are not owner-driven: event_day/post_event (clock), closed (close-out = deferred).
 const TARGET_TO_ACTION: Partial<Record<BookingState, OwnerAction>> = {
-  awaiting_contract: "approve",
+  awaiting_contract: "approve_and_send",
   awaiting_signature: "generate_contract",
   declined: "decline",
   canceled: "cancel",
@@ -42,7 +42,7 @@ const TARGET_TO_ACTION: Partial<Record<BookingState, OwnerAction>> = {
 };
 
 // Stable button order regardless of LEGAL_TRANSITIONS ordering.
-const ACTION_ORDER: OwnerAction[] = ["approve", "generate_contract", "decline", "mark_signed", "cancel"];
+const ACTION_ORDER: OwnerAction[] = ["approve_and_send", "generate_contract", "decline", "mark_signed", "close_out", "cancel"];
 
 const CHIP: Record<BookingState, { label: string; tone: ChipTone }> = {
   pending: { label: "Pending review", tone: "warning" },
@@ -72,6 +72,12 @@ export function toBookingView(booking: Booking, now: Date): BookingView {
   if (effectiveState === "event_day" || effectiveState === "post_event") {
     legalActions = legalActions.filter((a) => a !== "cancel");
   }
+
+  // Close out is available when effective state is post_event (multi-hop, not a single transition).
+  if (effectiveState === "post_event") {
+    legalActions.push("close_out");
+  }
+
   legalActions = ACTION_ORDER.filter((a) => legalActions.includes(a));
 
   return {
@@ -83,6 +89,32 @@ export function toBookingView(booking: Booking, now: Date): BookingView {
     depositControlActive: DEPOSIT_ACTIVE_STATES.includes(effectiveState),
     chip: CHIP[effectiveState],
   };
+}
+
+export type NextStepHref = "detail" | "pre_walkthrough" | "post_walkthrough";
+export type NextStep = { label: string; href: NextStepHref };
+
+export function nextStep(
+  effectiveState: BookingState,
+  locks: { preLocked: boolean; postLocked: boolean }
+): NextStep | null {
+  switch (effectiveState) {
+    case "pending":
+      return { label: "Review request", href: "detail" };
+    case "awaiting_contract":
+      return { label: "Send contract", href: "detail" };
+    case "awaiting_signature":
+      return { label: "Get contract signed", href: "detail" };
+    case "confirmed":
+    case "event_day":
+      if (!locks.preLocked) return { label: "Pre-event walkthrough due", href: "pre_walkthrough" };
+      return null;
+    case "post_event":
+      if (!locks.postLocked) return { label: "Post-event walkthrough due", href: "post_walkthrough" };
+      return { label: "Close out", href: "detail" };
+    default:
+      return null;
+  }
 }
 
 export type WalkthroughEntry = "start_pre_walkthrough" | "start_post_walkthrough";

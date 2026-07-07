@@ -1,20 +1,26 @@
 import Link from "next/link";
 import type { Booking } from "@/db/schema";
-import type { BookingView } from "@/lib/domain/booking-view";
+import type { BookingView, NextStep } from "@/lib/domain/booking-view";
 import { formatAtlantaRange } from "@/lib/tz";
 import StateChip from "../../_components/StateChip";
 
-const ACTION_HINT: Record<string, string> = {
-  approve: "Review request",
-  mark_signed: "Mark signed",
-};
+function hrefFor(bookingId: string, step: NextStep): string {
+  switch (step.href) {
+    case "pre_walkthrough":
+      return `/dashboard/bookings/${bookingId}/walkthrough/pre`;
+    case "post_walkthrough":
+      return `/dashboard/bookings/${bookingId}/walkthrough/post`;
+    default:
+      return `/dashboard/bookings/${bookingId}`;
+  }
+}
 
-export default function BookingRow({ booking, view }: { booking: Booking; view: BookingView }) {
+export default function BookingRow({ booking, view, step }: { booking: Booking; view: BookingView; step: NextStep | null }) {
   const title = booking.eventType ?? "Event request";
-  const hint = view.legalActions.map((a) => ACTION_HINT[a]).find(Boolean);
+  const href = step ? hrefFor(booking.id, step) : `/dashboard/bookings/${booking.id}`;
   return (
     <Link
-      href={`/dashboard/bookings/${booking.id}`}
+      href={href}
       className="flex items-center gap-3 rounded-lg border border-owner-border bg-owner-panel px-4 py-3 hover:border-[#3a3d4a] hover:bg-[#1a1c23]"
     >
       <div className="min-w-0 flex-1">
@@ -24,7 +30,7 @@ export default function BookingRow({ booking, view }: { booking: Booking; view: 
         </div>
       </div>
       <StateChip label={view.chip.label} tone={view.chip.tone} />
-      {hint ? <span className="hidden text-xs text-owner-muted sm:inline">{hint}</span> : null}
+      {step ? <span className="hidden text-xs text-owner-muted sm:inline">{step.label}</span> : null}
       <span className="text-owner-muted">›</span>
     </Link>
   );

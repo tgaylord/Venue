@@ -4,7 +4,8 @@ import Link from "next/link";
 import { getDb } from "@/lib/db";
 import { getStudioByClerkUserId } from "@/lib/studio";
 import { listBookingsForStudio } from "@/lib/booking";
-import { toBookingView, type DashboardGroup } from "@/lib/domain/booking-view";
+import { toBookingView, nextStep, type DashboardGroup } from "@/lib/domain/booking-view";
+import { getWalkthroughSummary } from "@/lib/walkthrough";
 import CopyLinkButton from "../_components/CopyLinkButton";
 import MetricStrip from "./_components/MetricStrip";
 import BookingRow from "./_components/BookingRow";
@@ -24,7 +25,12 @@ export default async function DashboardPage() {
 
   const bookings = await listBookingsForStudio(db, studio.id);
   const now = new Date();
-  const rows = bookings.map((b) => ({ booking: b, view: toBookingView(b, now) }));
+  const rows = await Promise.all(bookings.map(async (b) => {
+    const view = toBookingView(b, now);
+    const wtSummary = await getWalkthroughSummary(db, b.id);
+    const step = nextStep(view.effectiveState, wtSummary);
+    return { booking: b, view, step };
+  }));
 
   const today = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric",
@@ -64,7 +70,7 @@ export default async function DashboardPage() {
                   <span className="rounded-full bg-owner-panel-2 px-2 py-0.5 text-[11px] text-owner-muted">{items.length}</span>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {items.map((r) => <BookingRow key={r.booking.id} booking={r.booking} view={r.view} />)}
+                  {items.map((r) => <BookingRow key={r.booking.id} booking={r.booking} view={r.view} step={r.step} />)}
                 </div>
               </section>
             );

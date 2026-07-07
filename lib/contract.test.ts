@@ -4,6 +4,7 @@ import { createTestDb } from "@/lib/domain/test-db";
 import { studios, bookings, contracts, bookingEvents, type Booking } from "@/db/schema";
 import {
   getContractForBooking, upsertContract, markContractSigned, generateAndAdvance, contractKey,
+  approveAndSendContract,
 } from "./contract";
 import type { Db } from "@/lib/domain/transitions";
 
@@ -76,5 +77,78 @@ describe("contract DB access", () => {
     await expect(
       generateAndAdvance(db, advanced, IDENTITY, deps, { type: "owner", id: "owner-1" })
     ).rejects.toThrow();
+  });
+});
+
+describe("approveAndSendContract", () => {
+  let db: Db;
+  beforeEach(async () => { db = (await createTestDb()).db; });
+
+  const fakeDeps = {
+    render: async () => Buffer.from("%PDF-fake"),
+    put: async () => {},
+    now: () => new Date("2026-07-07T00:00:00Z"),
+  };
+
+  it("happy path: pending → awaiting_contract → awaiting_signature with two booking_events + contract row", async () => {
+    const b = await seedBooking(db, "pending");
+    const contract = await approveAndSendContract(db, b, IDENTITY, fakeDeps, { type: "owner", id: "owner-1" });
+
+    // Final state is awaiting_signature
+    const [row] = await db.select().from(bookings).where(eq(bookings.id, b.id));
+    expect(row.state).toBe("awaiting_signature");
+
+    // Two booking_events rows: pending→awaiting_contract, awaiting_contract→awaiting_signature
+    const events = await db
+      .select()
+      .from(bookingEvents)
+      .where(eq(bookingEvents.bookingId, b.id))
+      .orderBy(bookingEvents.createdAt);
+    expect(events).toHaveLength(2);
+    expect(events[0].fromState).toBe("pending");
+    expect(events[0].toState).toBe("awaiting_contract");
+    expect(events[1].fromState).toBe("awaiting_contract");
+    expect(events[1].toState).toBe("awaiting_signature");
+
+    // Contract row exists
+    expect(contract.pdfR2Key).toBe(contractKey(b.id));
+    expect(contract.status).toBe("sent");
+  });
+
+  it("double-fire idempotence: second call throws (CAS catches the stale expectedFrom)", async () => {
+    const b = await seedBooking(db, "pending");
+    await approveAndSendContract(db, b, IDENTITY, fakeDeps, { type: "owner", id: "owner-1" });
+    await expect(
+      approveAndSendContract(db, b, IDENTITY, fakeDeps, { type: "owner", id: "owner-1" })
+    ).rejects.toThrow();
+  });
+
+  it("failure after first hop leaves booking in awaiting_contract with recovery path", async () => {
+    const b = await seedBooking(db, "pending");
+    const failingDeps = {
+      render: async () => { throw new Error("render boom"); },
+      put: async () => {},
+    };
+    await expect(
+      approveAndSendContract(db, b, IDENTITY, failingDeps, { type: "owner", id: "owner-1" })
+    ).rejects.toThrow("render boom");
+
+    // Booking parked at awaiting_contract — the first hop committed
+    const [row] = await db.select().from(bookings).where(eq(bookings.id, b.id));
+    expect(row.state).toBe("awaiting_contract");
+
+    // One booking_event for the first hop
+    const events = await db
+      .select()
+      .from(bookingEvents)
+      .where(eq(bookingEvents.bookingId, b.id));
+    expect(events).toHaveLength(1);
+    expect(events[0].toState).toBe("awaiting_contract");
+
+    // Recovery: standalone generateAndAdvance still works from awaiting_contract
+    const [parked] = await db.select().from(bookings).where(eq(bookings.id, b.id));
+    await generateAndAdvance(db, parked, IDENTITY, fakeDeps, { type: "owner", id: "owner-1" });
+    const [recovered] = await db.select().from(bookings).where(eq(bookings.id, b.id));
+    expect(recovered.state).toBe("awaiting_signature");
   });
 });

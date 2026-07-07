@@ -43,6 +43,21 @@ export type GenerateDeps = {
 export type StudioIdentity = { studioName: string; studioAddress: string | null; equipmentList: string | null };
 
 /**
+ * One owner gesture: pending → awaiting_contract → awaiting_signature.
+ * First hop commits independently so a render/put failure leaves the booking
+ * in awaiting_contract with a working standalone generateAndAdvance recovery.
+ */
+export async function approveAndSendContract(
+  db: Db, booking: Booking, identity: StudioIdentity, deps: GenerateDeps, actor: Actor
+): Promise<Contract> {
+  await transitionBooking(db, booking.id, "awaiting_contract", actor, {
+    expectedFrom: "pending",
+  });
+  const fresh = { ...booking, state: "awaiting_contract" as const };
+  return generateAndAdvance(db, fresh, identity, deps, actor);
+}
+
+/**
  * Render → store → upsert row → advance state. transitionBooking's CAS is the
  * sole idempotency/race guard: a second call from awaiting_signature throws
  * IllegalTransitionError, which the caller surfaces as "already generated".

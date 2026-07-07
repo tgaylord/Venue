@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import type { Booking } from "@/db/schema";
 import type { BookingState } from "@/lib/domain/states";
-import { toBookingView, walkthroughEntries } from "@/lib/domain/booking-view";
+import { toBookingView, walkthroughEntries, nextStep } from "@/lib/domain/booking-view";
 
 // Minimal Booking factory — toBookingView reads only id/state/startsAt/endsAt.
 function bk(state: BookingState, startsAt: Date, endsAt: Date): Booking {
@@ -41,8 +41,8 @@ describe("toBookingView — group", () => {
 });
 
 describe("toBookingView — legalActions", () => {
-  it("pending offers approve, decline, cancel", () => {
-    expect(toBookingView(bk("pending", START, END), BEFORE).legalActions).toEqual(["approve", "decline", "cancel"]);
+  it("pending offers approve_and_send, decline, cancel", () => {
+    expect(toBookingView(bk("pending", START, END), BEFORE).legalActions).toEqual(["approve_and_send", "decline", "cancel"]);
   });
   it("awaiting_contract offers generate_contract and cancel", () => {
     expect(toBookingView(bk("awaiting_contract", START, END), BEFORE).legalActions).toEqual(["generate_contract", "cancel"]);
@@ -66,8 +66,8 @@ describe("toBookingView — legalActions", () => {
   it("cancel is suppressed once the event is effectively event_day", () => {
     expect(toBookingView(bk("confirmed", START, END), DURING).legalActions).toEqual([]);
   });
-  it("cancel is suppressed once the event is effectively post_event", () => {
-    expect(toBookingView(bk("confirmed", START, END), AFTER).legalActions).toEqual([]);
+  it("post_event offers close_out (cancel suppressed)", () => {
+    expect(toBookingView(bk("confirmed", START, END), AFTER).legalActions).toEqual(["close_out"]);
   });
   it("terminal states offer nothing", () => {
     for (const s of ["closed", "declined", "canceled"] as BookingState[]) {
@@ -92,6 +92,45 @@ describe("toBookingView — chip", () => {
     expect(toBookingView(bk("confirmed", START, END), BEFORE).chip).toEqual({ label: "Confirmed", tone: "success" });
     expect(toBookingView(bk("confirmed", START, END), DURING).chip).toEqual({ label: "Event today", tone: "success" });
     expect(toBookingView(bk("declined", START, END), FAR).chip.tone).toBe("danger");
+  });
+});
+
+describe("nextStep", () => {
+  const none = { preLocked: false, postLocked: false };
+  const allLocked = { preLocked: true, postLocked: true };
+  const preLocked = { preLocked: true, postLocked: false };
+
+  it("pending → Review request (detail)", () => {
+    expect(nextStep("pending", none)).toEqual({ label: "Review request", href: "detail" });
+  });
+  it("awaiting_contract → Send contract (detail)", () => {
+    expect(nextStep("awaiting_contract", none)).toEqual({ label: "Send contract", href: "detail" });
+  });
+  it("awaiting_signature → Get contract signed (detail)", () => {
+    expect(nextStep("awaiting_signature", none)).toEqual({ label: "Get contract signed", href: "detail" });
+  });
+  it("confirmed with pre unlocked → Pre-event walkthrough due (capture)", () => {
+    expect(nextStep("confirmed", none)).toEqual({ label: "Pre-event walkthrough due", href: "pre_walkthrough" });
+  });
+  it("confirmed with pre locked → null", () => {
+    expect(nextStep("confirmed", preLocked)).toBeNull();
+  });
+  it("event_day with pre unlocked → Pre-event walkthrough due (capture)", () => {
+    expect(nextStep("event_day", none)).toEqual({ label: "Pre-event walkthrough due", href: "pre_walkthrough" });
+  });
+  it("event_day with pre locked → null", () => {
+    expect(nextStep("event_day", preLocked)).toBeNull();
+  });
+  it("post_event with post unlocked → Post-event walkthrough due (capture)", () => {
+    expect(nextStep("post_event", none)).toEqual({ label: "Post-event walkthrough due", href: "post_walkthrough" });
+  });
+  it("post_event with post locked → Close out (detail)", () => {
+    expect(nextStep("post_event", allLocked)).toEqual({ label: "Close out", href: "detail" });
+  });
+  it("terminal states → null", () => {
+    expect(nextStep("closed", none)).toBeNull();
+    expect(nextStep("declined", none)).toBeNull();
+    expect(nextStep("canceled", none)).toBeNull();
   });
 });
 
