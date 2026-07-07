@@ -86,5 +86,22 @@ Owner action wrappers detect an auth-failed action response and surface "session
 
 ---
 
+## PR A status
+
+**Merged** as PR #20 (2026-07-07). All 6 tasks (A1–A6) landed. 266 tests (23 new), lint + typecheck clean, 5 CI checks green.
+
+### PR A review carry-forwards (acceptable for v0.5, candidates for future work)
+
+1. **N+1 dashboard query** — `dashboard/page.tsx` fetches walkthrough summaries per-booking inside `Promise.all(bookings.map(...))`. Fine at current scale; batch with a single `WHERE booking_id IN (...)` when row counts grow.
+2. **Error-mapping duplication** — owner server actions each map domain errors to user-facing strings independently. Known tech debt; extract a shared `mapDomainError` helper when actions multiply.
+3. **Hardcoded close-out chain** — `close-out.ts` has a literal `["confirmed","event_day","post_event","closed"]` array. Acceptable: the chain mirrors the state machine and a mismatch would be caught by `transitionBooking`'s guard. Could derive from `LEGAL_TRANSITIONS` if the machine grows.
+
+### Deviations from plan
+
+- **A6 workflow_dispatch verification** deferred to post-merge (can't trigger `workflow_dispatch` until the file is on the default branch). Verify manually after docs PR merges.
+- **Sidebar dead-item removal** (`"Day-of checklist"`) done in PR A rather than PR B (B2) — it was a one-liner adjacent to A4 work.
+
+---
+
 ## Carry-forwards (unchanged, for the ledger)
 Attorney review of contract template (launch gate); Resend domain verification + `EMAIL_FROM` (deferred to brand refresh — remember the unquoted-value footgun); `rate_limits` TTL cleanup; `availableStartHours` half-open-edge tests; share-link gating on `onboarding_completed_at`; `createStudio` unique-violation retry; service worker.
