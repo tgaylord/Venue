@@ -56,9 +56,14 @@ export default function CaptureFlow(props: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [useFallback, setUseFallback] = useState(false);
   const [shot, setShot] = useState(false);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Object URLs for in-session captured photos (for on-screen preview), revoked
+  // on overwrite/retake/unmount. The ref mirrors state so the unmount cleanup
+  // can revoke whatever is current without re-subscribing.
+  const previewUrlsRef = useRef<Record<string, string>>({});
 
   const webview = useSyncExternalStore(
     subscribeNoop,
@@ -95,6 +100,11 @@ export default function CaptureFlow(props: Props) {
     return () => { stopCamera(); };
   }, [phase, idx, shot, useFallback, webview]);
 
+  useEffect(() => { previewUrlsRef.current = previewUrls; }, [previewUrls]);
+  useEffect(() => () => {
+    Object.values(previewUrlsRef.current).forEach((u) => URL.revokeObjectURL(u));
+  }, []);
+
   async function uploadBlob(item: Item, blob: Blob) {
     setBusy(true); setErr(null);
     try {
@@ -110,6 +120,12 @@ export default function CaptureFlow(props: Props) {
         sha256, bytes: blob.size, contentType: "image/jpeg", lat: geo.lat, lng: geo.lng,
       });
       if (!res.ok) { setErr(res.error ?? "Could not save."); return; }
+      const url = URL.createObjectURL(blob);
+      setPreviewUrls(m => {
+        const prev = m[item.id];
+        if (prev) URL.revokeObjectURL(prev);
+        return { ...m, [item.id]: url };
+      });
       setDone(d => ({ ...d, [item.id]: true }));
       setLastCapturedAt(m => ({ ...m, [item.id]: new Date().toISOString() }));
       setShot(true);
@@ -131,7 +147,14 @@ export default function CaptureFlow(props: Props) {
     setShot(false);
     setErr(null);
     const item = items[idx];
-    if (item) setDone(d => { const next = { ...d }; delete next[item.id]; return next; });
+    if (item) {
+      setDone(d => { const next = { ...d }; delete next[item.id]; return next; });
+      setPreviewUrls(m => {
+        const prev = m[item.id];
+        if (prev) URL.revokeObjectURL(prev);
+        const next = { ...m }; delete next[item.id]; return next;
+      });
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -219,9 +242,21 @@ export default function CaptureFlow(props: Props) {
 
         <div className="relative mb-4 flex flex-1 items-center justify-center overflow-hidden rounded-2xl border border-owner-border bg-owner-panel">
           {shot && currentDone ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-owner-panel-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full border border-success bg-success/10 text-[19px] text-success">✓</div>
-              <div className="text-[13px] font-semibold text-owner-text">Photo captured</div>
+            <div className="absolute inset-0 bg-owner-panel-2">
+              {previewUrls[current.id] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewUrls[current.id]}
+                  alt={`${current.name} — captured photo`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-[19px] text-success">✓</div>
+              )}
+              <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-success">
+                <span>✓</span>
+                <span>Captured</span>
+              </div>
               <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/55 px-3.5 py-2.5 font-mono text-[9.5px] text-owner-muted">
                 <span>{currentCapturedAt ? formatTimestamp(currentCapturedAt) : ""} · SERVER</span>
                 <span>Geotagged</span>
@@ -306,8 +341,20 @@ export default function CaptureFlow(props: Props) {
         <div className="mb-4 grid grid-cols-3 gap-2">
           {items.map((it) => (
             <div key={it.id} className="overflow-hidden rounded-[9px] border border-owner-border">
-              <div className="flex h-16 items-center justify-center bg-owner-panel text-[14px] text-success">
-                {done[it.id] ? "✓" : ""}
+              <div className="relative flex h-16 items-center justify-center bg-owner-panel text-[14px] text-success">
+                {previewUrls[it.id] ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={previewUrls[it.id]}
+                      alt={`${it.name} — captured photo`}
+                      className="h-full w-full object-cover"
+                    />
+                    <span className="absolute right-1 top-1 rounded-full bg-black/55 px-1 text-[9px] text-success">✓</span>
+                  </>
+                ) : (
+                  done[it.id] ? "✓" : ""
+                )}
               </div>
               <div className="bg-owner-panel-2 px-1.5 py-1">
                 <div className="truncate text-[9.5px] font-semibold text-owner-text">{it.name}</div>
