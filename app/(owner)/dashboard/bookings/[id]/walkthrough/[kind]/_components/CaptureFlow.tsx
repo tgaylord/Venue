@@ -57,6 +57,7 @@ export default function CaptureFlow(props: Props) {
   const [useFallback, setUseFallback] = useState(false);
   const [shot, setShot] = useState(false);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -187,6 +188,20 @@ export default function CaptureFlow(props: Props) {
   const allDone = items.length > 0 && items.every((it) => done[it.id]);
   const pct = items.length > 0 ? Math.round(((idx + (currentDone ? 1 : 0)) / items.length) * 100) : 0;
 
+  // Full-screen photo viewer, shared by the capture confirmation + review screens.
+  const lightboxEl = lightbox ? (
+    <button
+      type="button"
+      onClick={() => setLightbox(null)}
+      aria-label="Close photo"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={lightbox} alt="Captured photo, enlarged" className="max-h-full max-w-full object-contain" />
+      <span className="absolute right-4 top-4 rounded-full bg-white/15 px-3 py-1 text-[13px] font-semibold text-white">Close</span>
+    </button>
+  ) : null;
+
   if (phase === "intro") {
     return (
       <div className="mt-4 flex flex-1 flex-col gap-4">
@@ -244,12 +259,19 @@ export default function CaptureFlow(props: Props) {
           {shot && currentDone ? (
             <div className="absolute inset-0 bg-owner-panel-2">
               {previewUrls[current.id] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewUrls[current.id]}
-                  alt={`${current.name} — captured photo`}
-                  className="h-full w-full object-cover"
-                />
+                <button
+                  type="button"
+                  onClick={() => setLightbox(previewUrls[current.id])}
+                  aria-label="View captured photo"
+                  className="block h-full w-full cursor-pointer"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrls[current.id]}
+                    alt={`${current.name} — captured photo`}
+                    className="h-full w-full object-cover"
+                  />
+                </button>
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-[19px] text-success">✓</div>
               )}
@@ -327,6 +349,7 @@ export default function CaptureFlow(props: Props) {
             </>
           )}
         </div>
+        {lightboxEl}
       </div>
     );
   }
@@ -341,21 +364,26 @@ export default function CaptureFlow(props: Props) {
         <div className="mb-4 grid grid-cols-3 gap-2">
           {items.map((it) => (
             <div key={it.id} className="overflow-hidden rounded-[9px] border border-owner-border">
-              <div className="relative flex h-16 items-center justify-center bg-owner-panel text-[14px] text-success">
-                {previewUrls[it.id] ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={previewUrls[it.id]}
-                      alt={`${it.name} — captured photo`}
-                      className="h-full w-full object-cover"
-                    />
-                    <span className="absolute right-1 top-1 rounded-full bg-black/55 px-1 text-[9px] text-success">✓</span>
-                  </>
-                ) : (
-                  done[it.id] ? "✓" : ""
-                )}
-              </div>
+              {previewUrls[it.id] ? (
+                <button
+                  type="button"
+                  onClick={() => setLightbox(previewUrls[it.id])}
+                  aria-label={`View ${it.name} photo`}
+                  className="relative block h-16 w-full cursor-pointer"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrls[it.id]}
+                    alt={`${it.name} — captured photo`}
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute right-1 top-1 rounded-full bg-black/55 px-1 text-[9px] text-success">✓</span>
+                </button>
+              ) : (
+                <div className="flex h-16 items-center justify-center bg-owner-panel text-[14px] text-success">
+                  {done[it.id] ? "✓" : ""}
+                </div>
+              )}
               <div className="bg-owner-panel-2 px-1.5 py-1">
                 <div className="truncate text-[9.5px] font-semibold text-owner-text">{it.name}</div>
                 <div className="font-mono text-[8px] text-owner-muted">
@@ -382,6 +410,7 @@ export default function CaptureFlow(props: Props) {
         >
           Skip walkthrough
         </button>
+        {lightboxEl}
       </div>
     );
   }
