@@ -2,14 +2,18 @@
 
 VenueDash is a SaaS platform for Atlanta studio owners who rent their spaces for private events. It handles the paperwork layer of event rentals: signed contracts, timestamped condition-photo walkthroughs, and damage-deposit status tracking.
 
-## Current build — v0.5, Phases 0–7 all merged; a v0.5 UI/flow polish sweep is the next work (to be brainstormed + planned in a separate session), then ship
+## Current build — v0.5, Phases 0–7 all merged; the v0.5 UI/flow pass is scoped + planned (2026-07-07) and ready for implementation, then ship
 
 We are building **v0.5**, a deliberately scoped first release. Read these before working:
 
 - **v0.5 spec (source of truth):** `docs/specs/2026-07-05-venuedash-v0.5-design.md`
+- **UI/flow pass (the next work):** spec `docs/specs/2026-07-07-venuedash-v0.5-ui-pass-design.md` + plan `docs/plans/2026-07-07-venuedash-v0.5-ui-pass.md`
+- **Glossary (ubiquitous language):** `CONTEXT.md` · **Decisions:** `docs/adr/`
 - **Per-phase specs + plans:** `docs/specs/` and `docs/plans/` (Phases 1–3 have both)
 - **Progress ledger (what happened, per task, incl. review findings):** `.superpowers/sdd/progress.md`
 - **Full v1.0 vision (deferred):** `docs/v1.0-vision/`
+
+**North star for the UI pass and beyond:** v0.5 must be *practically easier for an owner than not using it* (baseline: a text thread + a PDF attachment). **Brand freeze:** a rename ("VenueDash" is not final) + brand/design refresh may follow v0.5 — don't invest in branding (no logos/wordmarks; neutral PWA icons; no domain purchase; public contact is `venuedash.app@gmail.com`).
 
 **Status by phase (v0.5 spec §5):**
 - ✅ Phase 0 — Foundation (PR #6) · ✅ Phase 1 — Landing + waitlist + ToS (PR #7) · ✅ Phase 2 — Domain core (PR #8) · ✅ Phase 3 — Onboarding wizard + dashboard empty state (PR #9) · ✅ Phase 4 — Public booking page + intake (PR #11) · ✅ Phase 5 — Owner dashboard + booking detail (PR #13) · ✅ Phase 6 — Contract generation (PR #15; migration `0003` applied to Neon; UI walk confirmed both owner + renter downloads + PDF) · ✅ Phase 7 — Photo checklist PWA (**PR #17 merged**; follow-up **PR #18 merged** — captured-photo preview, click-to-enlarge lightbox on the confirmation + review screens, clearer iOS Safari install hint; migration `0004` applied to Neon; R2 CORS for `PUT`/`GET` configured; `CRON_SECRET` set on Production; **human UI walk confirmed** capture → retake → lock → gallery + lightbox on a real iPhone)
@@ -52,7 +56,7 @@ We are building **v0.5**, a deliberately scoped first release. Read these before
 - **Vercel:** framework pinned in `vercel.json`. The four `NEXT_PUBLIC_CLERK_*` redirect vars are baked at build time — set on **both Production and Preview**; a cached "Redeploy" won't pick up changes, push a commit. **`APP_URL`** (server-only *runtime* var — origin for transactional email links) is set on **Production only** (currently `https://venue-gold.vercel.app`); leave it **unset on Preview/dev** so the submit action falls back to the request host (the correct per-deploy URL). Because it's not `NEXT_PUBLIC_`, it's changeable without a rebuild (swap it when a custom domain lands).
 - **Email deliverability (working via Resend's default sender):** booking/status emails are **best-effort** — a send failure never blocks the booking, so it's silent; diagnose via the **Resend dashboard logs**. `EMAIL_FROM` is intentionally **UNSET in Vercel** (both scopes), so `lib/email.ts` falls back to `VenueDash <onboarding@resend.dev>` (Resend's shared verified sender) and sends **do deliver** — verified 2026-07-06 to a public Gmail. **Footgun when re-adding `EMAIL_FROM`:** paste it UNQUOTED in the Vercel UI — a value copied from `.env.example` keeps its surrounding double-quotes, reaches Resend as `"…"`, and 422s (`Invalid from`); this silently killed every send once. A branded `venuedash.com` sender additionally needs the domain verified in Resend (pre-launch checklist).
 - **DB migrations:** `npm run db:migrate` (drizzle-kit, idempotent) applies `drizzle/*.sql` to the `DATABASE_URL` in `.env.local` — the same Neon DB the deployment reads. Run it after any schema change and before deploying code that needs the new table (Phase 4 added `0002` = `rate_limits`).
-- **Process per phase:** brainstorm (superpowers) → spec in `docs/specs/` → plan in `docs/plans/` → subagent-driven development on a `feat/phase-N-*` branch → whole-branch review → PR with preview-deploy checks → merge. Ledger in `.superpowers/sdd/progress.md`.
+- **Process per phase:** scope via `/grill-with-docs` (glossary in `CONTEXT.md`, decisions in `docs/adr/`; the superpowers brainstorming-driven process used through Phase 7 is deprecated) → spec in `docs/specs/` → plan in `docs/plans/` → development on a `feat/*` branch → whole-branch review → PR with preview-deploy checks → merge. Historic ledger in `.superpowers/sdd/progress.md`.
 - **Verification lesson (hard-won):** signed-out curl checks are not enough — every new owner/renter page must be **rendered** in verification (authenticated walk on the preview, or an unauthenticated debug-route render of the client components locally).
 
 ## Phase 6 as built (contract generation) — read before Phase 7
@@ -85,22 +89,22 @@ We are building **v0.5**, a deliberately scoped first release. Read these before
 - **Deferred to v1.0 (carry-forward):** renter acknowledgment (`walkthroughs.acknowledged_at` stays null), auto-close `post_event → closed` + clock-state persistence, damage-claim flow, a renter-facing photo view, a service worker, server-side re-hash verification (client-computed sha256 is trusted for MVP). Copy discipline held throughout: **"timestamped documentation," never "immutable evidence."**
 - **Minor backlog for FINAL/future triage:** `commitCapture` throws `WalkthroughLockedError` on a not-found walkthrough (semantic overload — could confuse UI); manifest icons are placeholder solid-color PNGs.
 
-## Next work — v0.5 UI/flow polish sweep (planned in a SEPARATE session — not yet scoped)
+## Next work — v0.5 UI/flow pass (SCOPED + PLANNED 2026-07-07 — ready to implement)
 
-Phase 7 completed the last major build phase; the whole v0.5 flow (onboard → book → approve → contract → confirm → pre/post walkthrough → lock) is walkable end-to-end on Production. Before launch the human wants a **UI sweep + flow changes across surfaces** — to be brainstormed and planned fresh in a new session (start with `superpowers:brainstorming`, not by editing code). Known candidates to fold into that sweep:
-- Refine the **placeholder PWA icons** (currently flat `#7a86ff` tiles) → a real icon set.
-- **Deposit-status control** UI pass (carried from Phase 5 — its own full-width row/segmented control instead of the cramped 3-col status grid).
-- **`POLICY_LABELS`** map so "Agreed terms" shows plain-English policies instead of raw enums.
-- `commitCapture`'s `WalkthroughLockedError`-on-not-found semantic overload (distinct error type).
-- General owner/renter surface polish + any flow reordering the human wants.
-- Wire the **reminder cron scheduler** (see Phase 7 ops) if reminders are wanted at launch.
+Phase 7 completed the last major build phase; the whole v0.5 flow is walkable end-to-end on Production. The pre-ship UI/flow pass was scoped and planned via `/grill-with-docs` (superpowers brainstorming is deprecated for this project): **spec** `docs/specs/2026-07-07-venuedash-v0.5-ui-pass-design.md` (decisions + explicit out-of-scope list) · **plan** `docs/plans/2026-07-07-venuedash-v0.5-ui-pass.md` (two PRs: A = flow, B = polish; A first). Headline flow changes, all decided:
+- **Approve & send contract** — one owner action traverses `pending → awaiting_contract → awaiting_signature` (generate + email in between); standalone generate stays as the recovery path.
+- **Signing kit** on `awaiting_signature` + renter copy fix (the "signing request will arrive by email" promise is false — signing is manual).
+- Dashboard rows show a **next step** label; walkthrough-due rows **deep-link to capture**; dead "Day-of checklist" nav removed.
+- Renter `/status` gains per-state narration; **no deposit status shown to renters** (manual toggle goes stale).
+- **Close out** owner action (persists clock transitions lazily then closes — ADR-0002).
+- Reminder cron scheduler wired via GitHub Actions.
 
-**Then → ship:** onboard a real studio, run a booking through a locked post-event walkthrough, hand-invoice customer #1. Launch gate (not code) still open: **Georgia attorney review of the contract template** (spec §7).
+**Then → ship:** onboard a real studio, run a booking through close-out, hand-invoice customer #1. Launch gate (not code) still open: **Georgia attorney review of the contract template** (spec §7).
 
 ## What's in this repo (unchanged references)
 
 ### `prototype/`
-`VenueDash_Prototype.dc.html` + `support.js` — the interactive UI prototype and **visual spec of record**; port screens, don't redesign, and never edit these files. Open the HTML directly in a browser; the chrome switches between marketing / owner app / renter mini-site surfaces. Note: prototype copy reflects the v1.0 vision — rewrite claims to v0.5 truth when porting (no held deposits, no e-sign, no auto-refunds; "timestamped documentation," never "immutable evidence").
+`VenueDash_Prototype.dc.html` + `support.js` — the interactive UI prototype, **demoted to visual reference (ADR-0001, 2026-07-07)** — it no longer overrides the built app's flows; never edit these files. Open the HTML directly in a browser; the chrome switches between marketing / owner app / renter mini-site surfaces. Its copy reflects the v1.0 vision (held deposits, e-sign, auto-refunds) — never re-import those claims.
 
 ### Design conventions
 - Owner surface (dark): bg `#0b0c0f`, panel `#16171c`, border `#26272e`, text `#e9eaee`/muted `#9a9ca8`, accent `#7a86ff`, success `#5fd68b`, warning `#e6b054`, danger `#ef6f54`. Marketing shares the dark palette.

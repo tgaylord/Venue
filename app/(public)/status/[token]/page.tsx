@@ -4,6 +4,8 @@ import { getDb } from "@/lib/db";
 import { verifyRenterToken } from "@/lib/tokens";
 import { getContractForBooking } from "@/lib/contract";
 import { formatAtlantaRange } from "@/lib/tz";
+import { deriveEffectiveState } from "@/lib/domain/effective-state";
+import { renterNarration } from "@/lib/domain/renter-narration";
 import { bookings, studios } from "@/db/schema";
 import type { BookingState } from "@/lib/domain/states";
 
@@ -30,7 +32,9 @@ export default async function StatusPage({ params }: { params: Promise<{ token: 
   const [studio] = await db.select({ name: studios.name }).from(studios).where(eq(studios.id, booking.studioId));
   const contract = await getContractForBooking(db, bookingId);
 
-  const badge = BADGE[booking.state];
+  const effectiveState = deriveEffectiveState(booking, new Date());
+  const badge = BADGE[effectiveState];
+  const narration = renterNarration(effectiveState);
   const when = formatAtlantaRange(booking.startsAt, booking.endsAt);
 
   return (
@@ -41,14 +45,20 @@ export default async function StatusPage({ params }: { params: Promise<{ token: 
         <strong>{when}</strong><br />
         {booking.eventType} · {booking.headcount} guests
       </div>
-      <p className="mt-6 text-xs leading-relaxed text-[#8a867c]">
-        Bookmark this page to check your request status anytime — no account needed.
-      </p>
+
+      <div className="mt-6 rounded-xl border border-renter-border bg-white p-4">
+        <div className="font-mono text-[9.5px] uppercase tracking-[.12em] text-[#8a867c]">{narration.heading}</div>
+        <p className="mt-1 text-[13px] leading-relaxed text-renter-ink">{narration.body}</p>
+        {narration.note ? (
+          <p className="mt-2 text-[12px] leading-relaxed text-[#8a867c]">{narration.note}</p>
+        ) : null}
+      </div>
+
       {contract?.pdfR2Key ? (
-        <div className="mt-6 rounded-xl border border-renter-border bg-white p-4">
+        <div className="mt-4 rounded-xl border border-renter-border bg-white p-4">
           <div className="font-mono text-[9.5px] uppercase tracking-[.12em] text-[#8a867c]">Rental agreement</div>
           <p className="mt-1 text-[13px] leading-relaxed text-renter-ink">
-            Your agreement is ready. A separate signing request will arrive by email.
+            Review your agreement below. Your host will arrange signing.
           </p>
           <a
             href={`/status/${token}/contract`}
@@ -58,6 +68,10 @@ export default async function StatusPage({ params }: { params: Promise<{ token: 
           </a>
         </div>
       ) : null}
+
+      <p className="mt-6 text-xs leading-relaxed text-[#8a867c]">
+        Bookmark this page to check your request status anytime — no account needed.
+      </p>
     </main>
   );
 }

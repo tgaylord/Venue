@@ -9,8 +9,8 @@ export default function ContractReadyRenter(p: ContractReadyEmailProps) {
         <Container style={{ padding: 24, maxWidth: 520 }}>
           <Heading style={{ fontSize: 22, fontFamily: "Georgia, serif" }}>Your rental agreement is ready</Heading>
           <Text style={{ lineHeight: 1.7 }}>
-            {p.studioName} has prepared the rental agreement for your event. Download your copy below to review it.
-            You&apos;ll also receive a separate request to sign it electronically — keep an eye on your inbox.
+            {p.studioName} has approved your booking and prepared the rental agreement.
+            Download your copy below to review it. Your host will arrange signing.
           </Text>
           <Text style={{ color: "#8a867c" }}>Your event: {p.when}</Text>
           {p.contractUrl ? (

@@ -18,7 +18,8 @@ import { deriveEffectiveState } from "@/lib/domain/effective-state";
 import { toBookingView } from "@/lib/domain/booking-view";
 import { parseDepositStatus, type BookingActionState } from "./forms";
 import { formatAtlantaRange } from "@/lib/tz";
-import { generateAndAdvance, markContractSigned } from "@/lib/contract";
+import { approveAndSendContract, generateAndAdvance, markContractSigned } from "@/lib/contract";
+import { closeOutBooking, CloseOutNotAllowedError } from "@/lib/domain/close-out";
 import { renderContractPdf } from "@/lib/contract/pdf";
 import { putObject } from "@/lib/storage";
 import { sendEmail, renderContractReadyRenter } from "@/lib/email";
@@ -66,11 +67,48 @@ async function runTransition(
   return { status: "idle", error: "" };
 }
 
-export async function approveBooking(
+export async function approveAndSend(
   bookingId: string, _prev: BookingActionState, _fd: FormData
 ): Promise<BookingActionState> {
-  const { db, userId } = await ownerContext(bookingId);
-  return runTransition(db, bookingId, "awaiting_contract", userId);
+  const { db, userId, booking, studio } = await ownerContext(bookingId);
+  try {
+    await approveAndSendContract(
+      db, booking,
+      { studioName: studio.name, studioAddress: studio.address, equipmentList: studio.equipmentList },
+      { render: renderContractPdf, put: putObject },
+      { type: "owner", id: userId }
+    );
+  } catch (e) {
+    if (
+      e instanceof IllegalTransitionError ||
+      e instanceof ConcurrentTransitionError ||
+      e instanceof BookingNotFoundError
+    ) {
+      return { status: "error", error: "This booking just changed — refresh and try again." };
+    }
+    throw e;
+  }
+
+  try {
+    const origin = await baseUrl();
+    const contractToken = await mintRenterToken(
+      db, bookingId, "contract", new Date(Date.now() + CONTRACT_TOKEN_TTL_MS)
+    );
+    await sendEmail({
+      to: booking.renterEmail,
+      subject: `Your rental agreement for ${studio.name} is ready`,
+      html: await renderContractReadyRenter({
+        studioName: studio.name,
+        when: formatAtlantaRange(booking.startsAt, booking.endsAt),
+        contractUrl: `${origin}/contract/${contractToken}`,
+      }),
+    });
+  } catch (e) {
+    console.error("renter contract email failed (approve+send stands):", e);
+  }
+
+  revalidate(bookingId);
+  return { status: "idle", error: "" };
 }
 
 export async function generateContract(
@@ -154,6 +192,29 @@ export async function markSigned(
   try { await markContractSigned(db, bookingId, signedAt); } catch (e) { console.error("contract-row sign flip failed (confirm stands):", e); }
   revalidate(bookingId);
   return result;
+}
+
+export async function closeOut(
+  bookingId: string, _prev: BookingActionState, _fd: FormData
+): Promise<BookingActionState> {
+  const { db, userId, booking } = await ownerContext(bookingId);
+  try {
+    await closeOutBooking(db, booking, { type: "owner", id: userId });
+  } catch (e) {
+    if (e instanceof CloseOutNotAllowedError) {
+      return { status: "error", error: "This booking can't be closed out yet." };
+    }
+    if (
+      e instanceof IllegalTransitionError ||
+      e instanceof ConcurrentTransitionError ||
+      e instanceof BookingNotFoundError
+    ) {
+      return { status: "error", error: "This booking just changed — refresh and try again." };
+    }
+    throw e;
+  }
+  revalidate(bookingId);
+  return { status: "idle", error: "" };
 }
 
 export async function setDeposit(

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 const NAV = [
   { label: "Dashboard", href: "/dashboard", enabled: true },
-  { label: "Day-of checklist", href: null, enabled: false }, // Phase 7
   { label: "Settings & policies", href: "/settings", enabled: true },
 ] as const;
 
